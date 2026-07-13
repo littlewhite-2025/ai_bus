@@ -1,3 +1,5 @@
-#yolo
 runs/
 *.pt
+assets/
+
+.venv/
