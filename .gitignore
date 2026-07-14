@@ -1,5 +1,9 @@
 runs/
 *.pt
 assets/
+training_files/
 
 .venv/
+*.zip
+
+*.log
