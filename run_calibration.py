@@ -12,6 +12,9 @@ run_calibration.py
         --image empty_room.jpg \\
         --model runs/detect/seat_detector/weights/best.pt \\
         --seats-per-side 2
+(最後是使用```
+python run_calibration.py --image assets/pictures/main/main2.png --model runs/detect/seat_detector-3/weights/best.pt --seats-per-side 2 --conf 0.5 --dedup-iou 0.85 --row-order near_first
+```需要的話可以參考)
 
 執行完成後會在目前資料夾產生：
     calibration_preview.png   ← 人工確認用的標註預覽圖
