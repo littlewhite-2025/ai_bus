@@ -8,7 +8,7 @@
    比 mean 更能抵抗遠近視角造成的框高差異）
 3. 每排內依 x 中心點，由左到右編號
 
-這改成只需要在「空場景」（沒有人坐）對著固定機位跑一次。
+這份腳本只需要在「空場景」（沒有人坐）對著固定機位跑一次。
 存檔前會先畫出標註好座位ID的預覽圖，人工確認無誤後按 y 才會真的存檔，
 避免排錯座位ID卻沒發現，導致整批座位ID錯亂。
 """
@@ -25,6 +25,49 @@ from sklearn.cluster import KMeans
 
 BBox = Tuple[float, float, float, float]  # (x1, y1, x2, y2)
 BoxWithCenter = Tuple[BBox, float, float]  # (box, cx, cy)
+
+
+def _compute_iou(box1: BBox, box2: BBox) -> float:
+    """計算兩個 bbox 的 IoU（交集面積 / 聯集面積）"""
+    x1 = max(box1[0], box2[0])
+    y1 = max(box1[1], box2[1])
+    x2 = min(box1[2], box2[2])
+    y2 = min(box1[3], box2[3])
+
+    inter_w = max(0.0, x2 - x1)
+    inter_h = max(0.0, y2 - y1)
+    inter_area = inter_w * inter_h
+
+    area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+    union_area = area1 + area2 - inter_area
+
+    if union_area <= 0:
+        return 0.0
+    return inter_area / union_area
+
+
+def _deduplicate_boxes(seat_boxes: List[BBox], iou_threshold: float = 0.6) -> List[BBox]:
+    """
+    去除重複偵測到的座位框。
+
+    YOLO 對同一張椅子有時會輸出兩個高度重疊的框（NMS沒完全合併），
+    如果不先去重，calibrate_seats() 會把同一張椅子當成兩個座位、
+    分配兩個不同ID，導致校準結果出現「A02跟A03標到同一個位置」這種錯誤。
+
+    做法：兩兩比較所有框，IoU 超過門檻視為同一張椅子，只保留其中一個。
+    """
+    kept: List[BBox] = []
+    for box in seat_boxes:
+        is_duplicate = any(_compute_iou(box, kept_box) >= iou_threshold for kept_box in kept)
+        if not is_duplicate:
+            kept.append(box)
+
+    removed_count = len(seat_boxes) - len(kept)
+    if removed_count > 0:
+        print(f"[提醒] 偵測到 {removed_count} 個重複/高度重疊的座位框，已自動合併去除")
+
+    return kept
 
 
 def _get_center(box: BBox) -> Tuple[float, float]:
@@ -120,9 +163,28 @@ def calibrate_seats(
     if not seat_boxes:
         raise ValueError("seat_boxes 不可為空，請確認偵測結果或標註是否正確")
 
+    seat_boxes = _deduplicate_boxes(seat_boxes)
+
+    if len(seat_boxes) < 2:
+        raise ValueError(
+            f"去重後只剩 {len(seat_boxes)} 個座位，數量太少無法分左右兩側，"
+            f"請檢查 YOLO 偵測結果是否正常（可能是 --conf 門檻太高導致漏檢）"
+        )
+
     boxes_with_centers = [(box, *_get_center(box)) for box in seat_boxes]
 
     left, right = _split_left_right_kmeans(boxes_with_centers)
+
+    if not left or not right:
+        raise ValueError(
+            f"座位分群結果有一側是空的（左側 {len(left)} 個、右側 {len(right)} 個），"
+            f"可能原因：\n"
+            f"  1. 偵測到的座位數量太少（目前共 {len(seat_boxes)} 個），"
+            f"導致 KMeans 無法正確分出左右兩群\n"
+            f"  2. YOLO 只偵測到畫面其中一側的座位，另一側完全漏檢\n"
+            f"建議：先確認 YOLO 偵測是否正常（降低 --conf 門檻重跑一次），"
+            f"或用 visualize_calibration() 搭配原始偵測框畫圖檢查漏檢狀況"
+        )
 
     left_rows = _group_into_rows(left, y_tolerance)
     right_rows = _group_into_rows(right, y_tolerance)
