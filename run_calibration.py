@@ -1,13 +1,20 @@
 """
-這是一個CLI，主要是用來更好的執行calibrate.py的流程，不用特地改寫程式就能完成座位ID校準
+run_calibration.py
+
 一鍵完成座位ID校準的完整流程：
     1. 讀取空場景圖片（沒有人坐的畫面）
     2. 用訓練好的 YOLO 模型偵測 seat
     3. 把偵測到的 seat_boxes 丟給 calibrate_seats() 自動分配座位ID
     4. 呼叫 confirm_and_save()，畫出預覽圖讓你人工確認後才存檔
 
+執行前請先安裝套件：
+    pip install ultralytics opencv-python-headless scikit-learn numpy
+
 用法範例：
-    python run_calibration.py --image empty_room.jpg --model runs/detect/seat_detector/weights/best.pt --seats-per-side 2
+    python run_calibration.py \\
+        --image empty_room.jpg \\
+        --model runs/detect/seat_detector/weights/best.pt \\
+        --seats-per-side 2
 
 執行完成後會在目前資料夾產生：
     calibration_preview.png   ← 人工確認用的標註預覽圖
@@ -60,14 +67,16 @@ def detect_seats(image_path: str, model_path: str, conf: float, seat_class_name:
 
     return image, seat_boxes
 
+
 def main():
     parser = argparse.ArgumentParser(description="座位ID一鍵校準工具")
     parser.add_argument("--image", required=True, help="空場景圖片路徑")
     parser.add_argument("--model", required=True, help="訓練好的 YOLO 權重路徑 (.pt)")
     parser.add_argument("--seats-per-side", type=int, default=2, help="每排座位數，預設2")
     parser.add_argument("--conf", type=float, default=0.4, help="YOLO 偵測信心門檻，預設0.4")
-    parser.add_argument("--seat-class-name", default="Seat", help="模型裡 Seat 這個 class 的名稱，預設'Seat'")
+    parser.add_argument("--seat-class-name", default="seat", help="模型裡 seat 這個 class 的名稱，預設'seat'")
     parser.add_argument("--y-tolerance", type=float, default=None, help="分排容忍值，預設自動計算")
+    parser.add_argument("--dedup-iou", type=float, default=0.85, help="判定重複偵測的IoU門檻，預設0.85。相鄰座位常被誤刪就調高，同一張椅子重複偵測沒被合併就調低")
     parser.add_argument("--preview-path", default="calibration_preview.png", help="預覽圖輸出路徑")
     parser.add_argument("--output", default="seat_calibration.json", help="校準表輸出路徑")
     args = parser.parse_args()
@@ -81,22 +90,17 @@ def main():
         seat_class_name=args.seat_class_name,
     )
 
-    print(f"共偵測到 {len(seat_boxes)} 個 Seat")
+    print(f"共偵測到 {len(seat_boxes)} 個 seat")
     if not seat_boxes:
         print("[錯誤] 沒有偵測到任何座位，請檢查圖片、模型或降低 --conf 門檻後再試一次")
         sys.exit(1)
-    
-    expected = 16  # 依公車實際座位數修改(這是預設座位數，如果不一樣的話會顯示錯誤，用於提醒模型偵測方面有錯誤)
-    if len(seat_boxes) != expected:
-        print(
-            f"[警告] 預期應該有 {expected} 個座位，"
-            f"但目前只偵測到 {len(seat_boxes)} 個，請確認模型是否有漏檢或誤檢。"
-    )
+
 
     calibration = calibrate_seats(
         seat_boxes=seat_boxes,
         seats_per_side=args.seats_per_side,
         y_tolerance=args.y_tolerance,
+        dedup_iou_threshold=args.dedup_iou,
     )
 
     print(f"校準完成，共 {len(calibration)} 個座位：")

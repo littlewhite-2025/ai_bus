@@ -7,3 +7,6 @@ training_files/
 *.zip
 
 *.log
+
+calibration_preview.png
+__pycache__/

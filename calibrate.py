@@ -47,7 +47,7 @@ def _compute_iou(box1: BBox, box2: BBox) -> float:
     return inter_area / union_area
 
 
-def _deduplicate_boxes(seat_boxes: List[BBox], iou_threshold: float = 0.6) -> List[BBox]:
+def _deduplicate_boxes(seat_boxes: List[BBox], iou_threshold: float = 0.85) -> List[BBox]:
     """
     去除重複偵測到的座位框。
 
@@ -56,6 +56,14 @@ def _deduplicate_boxes(seat_boxes: List[BBox], iou_threshold: float = 0.6) -> Li
     分配兩個不同ID，導致校準結果出現「A02跟A03標到同一個位置」這種錯誤。
 
     做法：兩兩比較所有框，IoU 超過門檻視為同一張椅子，只保留其中一個。
+
+    注意：門檻預設拉高到 0.85（原本 0.6 太容易誤判）。
+    因為攝影機角度接近正面拍攝時，相鄰兩張椅子的框（尤其是椅背/頭枕部分）
+    本來就會有明顯重疊，IoU 可能落在 0.5~0.7 之間，
+    如果門檻設太低，會把「真正不同的兩張椅子」誤判成重複偵測而合併掉，
+    導致某個座位ID直接消失。若你的場景座位間距更寬鬆、重疊更少，
+    可以把門檻調低一點提高去重靈敏度；若相鄰座位重疊嚴重，
+    可以再往上調（例如0.9）避免誤刪。
     """
     kept: List[BBox] = []
     for box in seat_boxes:
@@ -148,6 +156,7 @@ def calibrate_seats(
     seat_boxes: List[BBox],
     seats_per_side: int = 2,
     y_tolerance: float = None,
+    dedup_iou_threshold: float = 0.85,
 ) -> Dict[str, BBox]:
     """
     主函式：把一批座位 bbox 校準成固定座位ID。
@@ -156,6 +165,9 @@ def calibrate_seats(
         seat_boxes: 偵測到的所有座位框 [(x1,y1,x2,y2), ...]
         seats_per_side: 每排座位數，用來檢查分排結果是否符合預期（僅做警告用）
         y_tolerance: 同一排的 y 座標容忍值，預設自動計算(median高度*0.5)，特殊場景可手動指定
+        dedup_iou_threshold: 判定「重複偵測」的IoU門檻，預設0.85。
+            如果相鄰座位常被誤判成重複而遺失ID，調高這個值（例如0.9~0.95）；
+            如果同一張椅子常被判成不同座位（重複ID沒被合併），調低這個值。
 
     回傳:
         { "A01": (x1,y1,x2,y2), "A02": ..., "B01": ..., ... }
@@ -163,7 +175,7 @@ def calibrate_seats(
     if not seat_boxes:
         raise ValueError("seat_boxes 不可為空，請確認偵測結果或標註是否正確")
 
-    seat_boxes = _deduplicate_boxes(seat_boxes)
+    seat_boxes = _deduplicate_boxes(seat_boxes, iou_threshold=dedup_iou_threshold)
 
     if len(seat_boxes) < 2:
         raise ValueError(
