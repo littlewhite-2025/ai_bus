@@ -7,9 +7,6 @@ run_calibration.py
     3. 把偵測到的 seat_boxes 丟給 calibrate_seats() 自動分配座位ID
     4. 呼叫 confirm_and_save()，畫出預覽圖讓你人工確認後才存檔
 
-執行前請先安裝套件：
-    pip install ultralytics opencv-python-headless scikit-learn numpy
-
 用法範例：
     python run_calibration.py \\
         --image empty_room.jpg \\
@@ -75,8 +72,16 @@ def main():
     parser.add_argument("--seats-per-side", type=int, default=2, help="每排座位數，預設2")
     parser.add_argument("--conf", type=float, default=0.4, help="YOLO 偵測信心門檻，預設0.4")
     parser.add_argument("--seat-class-name", default="seat", help="模型裡 seat 這個 class 的名稱，預設'seat'")
-    parser.add_argument("--y-tolerance", type=float, default=None, help="分排容忍值，預設自動計算")
-    parser.add_argument("--dedup-iou", type=float, default=0.85, help="判定重複偵測的IoU門檻，預設0.85。相鄰座位常被誤刪就調高，同一張椅子重複偵測沒被合併就調低")
+    parser.add_argument(
+        "--row-order", choices=["far_first", "near_first"], default="far_first",
+        help="排的編號方向。far_first=離鏡頭遠的排先給01/02(預設)；"
+             "near_first=離鏡頭近的排先給01/02",
+    )
+    parser.add_argument(
+        "--dedup-iou", type=float, default=0.85,
+        help="判定重複偵測的IoU門檻，預設0.85。相鄰座位常被誤刪就調高，"
+             "同一張椅子重複偵測沒被合併就調低",
+    )
     parser.add_argument("--preview-path", default="calibration_preview.png", help="預覽圖輸出路徑")
     parser.add_argument("--output", default="seat_calibration.json", help="校準表輸出路徑")
     args = parser.parse_args()
@@ -95,12 +100,11 @@ def main():
         print("[錯誤] 沒有偵測到任何座位，請檢查圖片、模型或降低 --conf 門檻後再試一次")
         sys.exit(1)
 
-
     calibration = calibrate_seats(
         seat_boxes=seat_boxes,
         seats_per_side=args.seats_per_side,
-        y_tolerance=args.y_tolerance,
         dedup_iou_threshold=args.dedup_iou,
+        row_order=args.row_order,
     )
 
     print(f"校準完成，共 {len(calibration)} 個座位：")

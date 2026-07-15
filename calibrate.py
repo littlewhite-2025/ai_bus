@@ -4,9 +4,10 @@
 規則：
 1. 用 KMeans(n_clusters=2) 對座位 x 中心點分群，分成左側(A排)、右側(B排)
    （比中位數硬切更能抵抗座位分佈不均、少數離群座位造成的偏移）
-2. 每側再依 y 中心點，由前到後分排（容忍值用 median(高度) 計算，
-   比 mean 更能抵抗遠近視角造成的框高差異）
+2. 每側再用 KMeans 依 y 中心點分排（排數用「座位總數/seats_per_side」估計），
+   比原本用固定容忍值判斷更能適應「近大遠小」的透視效果
 3. 每排內依 x 中心點，由左到右編號
+4. row_order 參數決定編號方向：far_first(預設，遠排先編號) 或 near_first(近排先編號)
 
 這份腳本只需要在「空場景」（沒有人坐）對著固定機位跑一次。
 存檔前會先畫出標註好座位ID的預覽圖，人工確認無誤後按 y 才會真的存檔，
@@ -16,7 +17,6 @@
 from typing import List, Tuple, Dict, Optional
 import json
 import os
-import statistics
 import sys
 
 import numpy as np
@@ -111,43 +111,42 @@ def _split_left_right_kmeans(
     return left, right
 
 
-def _group_into_rows(
-    side_boxes: List[BoxWithCenter], y_tolerance: float = None
+def _group_into_rows_kmeans(
+    side_boxes: List[BoxWithCenter], seats_per_side: int
 ) -> List[List[BoxWithCenter]]:
     """
-    把同一側的座位，依 y 中心點分排（由前到後）。
+    把同一側的座位，依 y 中心點用 KMeans 分排（取代原本用容忍值判斷的方式）。
 
-    做法：先依 cy 排序，若兩個座位的 cy 差距在容忍值內，視為同一排；
-    超過容忍值就視為換到下一排。容忍值預設用座位框高度的「中位數」的一半，
-    比原本的平均值更抗雜訊——如果因為遠近視角，某幾個座位框特別大或特別小，
-    中位數比較不會被這些極端值拉偏，分排會更穩定。
-    可依實際場景手動覆寫。
+    原本用「容忍值」判斷同一排的做法，在攝影機透視明顯的場景會出問題：
+    離鏡頭近的座位框很大，離鏡頭遠的座位框很小，同一個容忍值沒辦法同時
+    適用近排跟遠排——用在近排太鬆、用在遠排（框本來就小）又太嚴，
+    容易把遠排的座位誤切成兩排，或跟別排混在一起。
+
+    改用 KMeans 分排：先用「座位總數 / 每排座位數(seats_per_side)」
+    估計應該有幾排，再依 cy 分佈整體分群，不受單一容忍值限制，
+    比較能同時適應近大遠小的透視效果。
     """
-    if not side_boxes:
+    n_boxes = len(side_boxes)
+    if n_boxes == 0:
         return []
 
-    sorted_boxes = sorted(side_boxes, key=lambda item: item[2])  # 依 cy 由小到大(前到後)
+    n_rows = max(1, round(n_boxes / seats_per_side))
+    n_rows = min(n_rows, n_boxes)  # 排數不可能比座位數還多
 
-    if y_tolerance is None:
-        heights = [item[0][3] - item[0][1] for item in sorted_boxes]
-        y_tolerance = statistics.median(heights) * 0.5
+    if n_rows == 1:
+        return [sorted(side_boxes, key=lambda item: item[2])]
 
+    cy_array = np.array([[item[2]] for item in side_boxes])
+    kmeans = KMeans(n_clusters=n_rows, n_init=10, random_state=42)
+    labels = kmeans.fit_predict(cy_array)
+    centers = kmeans.cluster_centers_.flatten()
+
+    # 依群心 cy 由小到大排序(由遠到近)，每排內部也依 cy 排序
+    cluster_order = np.argsort(centers)
     rows: List[List[BoxWithCenter]] = []
-    current_row = [sorted_boxes[0]]
-
-    for item in sorted_boxes[1:]:
-        # 用「目前這排所有座位 cy 的平均值」當基準，而不是只跟上一個座位比較。
-        # 只跟上一個比較容易出現「鏈式漂移」：即使每次差距都在容忍值內，
-        # 一路累積下來還是可能把本來不同排的座位串成同一排
-        # （例如 cy = 100, 108, 116, 124...，每次只差8，但100跟124其實該是不同排）。
-        # 跟整排平均值比較，離群值一旦超過容忍值就會被切開，不會被慢慢拖著走。
-        row_reference = statistics.mean(cy for _, _, cy in current_row)
-        if abs(item[2] - row_reference) <= y_tolerance:
-            current_row.append(item)
-        else:
-            rows.append(current_row)
-            current_row = [item]
-    rows.append(current_row)
+    for cluster_id in cluster_order:
+        row = [item for item, lbl in zip(side_boxes, labels) if lbl == cluster_id]
+        rows.append(sorted(row, key=lambda item: item[2]))
 
     return rows
 
@@ -155,23 +154,31 @@ def _group_into_rows(
 def calibrate_seats(
     seat_boxes: List[BBox],
     seats_per_side: int = 2,
-    y_tolerance: float = None,
     dedup_iou_threshold: float = 0.85,
+    row_order: str = "far_first",
 ) -> Dict[str, BBox]:
     """
     主函式：把一批座位 bbox 校準成固定座位ID。
 
     參數:
         seat_boxes: 偵測到的所有座位框 [(x1,y1,x2,y2), ...]
-        seats_per_side: 每排座位數，用來檢查分排結果是否符合預期（僅做警告用）
-        y_tolerance: 同一排的 y 座標容忍值，預設自動計算(median高度*0.5)，特殊場景可手動指定
+        seats_per_side: 每排座位數。這個參數現在同時用來：
+            (1) 估計應該分成幾排（座位總數 / seats_per_side），驅動 KMeans 分排
+            (2) 檢查分排結果是否符合預期（不符合會印警告）
+            務必填正確的值，不然分排容易出錯。
         dedup_iou_threshold: 判定「重複偵測」的IoU門檻，預設0.85。
             如果相鄰座位常被誤判成重複而遺失ID，調高這個值（例如0.9~0.95）；
             如果同一張椅子常被判成不同座位（重複ID沒被合併），調低這個值。
+        row_order: 排的編號方向，預設 "far_first"（離鏡頭遠的排先給01/02，
+            也就是畫面最上方那排是01）。如果你要的是「離鏡頭近的排=01/02」
+            （例如畫面最下方那排是01），改傳 row_order="near_first"。
 
     回傳:
         { "A01": (x1,y1,x2,y2), "A02": ..., "B01": ..., ... }
     """
+    if row_order not in ("far_first", "near_first"):
+        raise ValueError('row_order 只能是 "far_first" 或 "near_first"')
+
     if not seat_boxes:
         raise ValueError("seat_boxes 不可為空，請確認偵測結果或標註是否正確")
 
@@ -198,8 +205,8 @@ def calibrate_seats(
             f"或用 visualize_calibration() 搭配原始偵測框畫圖檢查漏檢狀況"
         )
 
-    left_rows = _group_into_rows(left, y_tolerance)
-    right_rows = _group_into_rows(right, y_tolerance)
+    left_rows = _group_into_rows_kmeans(left, seats_per_side)
+    right_rows = _group_into_rows_kmeans(right, seats_per_side)
 
     # 檢查每排座位數是否符合預期，不符合就提醒（不中斷程式，方便你先看整體結果）
     for side_name, rows in [("A", left_rows), ("B", right_rows)]:
@@ -207,14 +214,17 @@ def calibrate_seats(
             if len(row) != seats_per_side:
                 print(
                     f"[警告] {side_name} 側第 {row_idx} 排偵測到 {len(row)} 個座位，"
-                    f"預期為 {seats_per_side} 個，請檢查偵測結果或 y_tolerance 設定"
+                    f"預期為 {seats_per_side} 個，請檢查偵測結果或座位總數是否正確"
                 )
 
     result: Dict[str, BBox] = {}
 
     for prefix, rows in [("A", left_rows), ("B", right_rows)]:
+        # rows 目前固定是「遠到近」排序，near_first 時反過來，讓近排先編號
+        ordered_rows = list(reversed(rows)) if row_order == "near_first" else rows
+
         seat_number = 1
-        for row in rows:
+        for row in ordered_rows:
             row_sorted = sorted(row, key=lambda item: item[1])  # 排內依 cx 由左到右
             for box, cx, cy in row_sorted:
                 result[f"{prefix}{seat_number:02d}"] = box
@@ -332,7 +342,8 @@ if __name__ == "__main__":
         (1270, 505, 1500, 1040),  # B側
     ]
 
-    calibration = calibrate_seats(example_boxes, seats_per_side=3)
+    # row_order="near_first"：離鏡頭近的排先編號(01)，遠的排編號較大
+    calibration = calibrate_seats(example_boxes, seats_per_side=3, row_order="near_first")
     for seat_id, box in calibration.items():
         print(seat_id, box)
 
