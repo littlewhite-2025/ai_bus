@@ -1,5 +1,7 @@
 """
-這程式是用於讀取一張畫面(或影片單一幀)，偵測畫面中的 person，
+run_inference.py
+
+用途：讀取一張畫面(或影片單一幀)，偵測畫面中的 person，
 拿去跟事先校準好的 seat_calibration.json 做配對，
 判斷每個座位是 occupied 還是 empty，輸出你要的 JSON 格式：
 
@@ -18,11 +20,10 @@
     1. 讀取 seat_calibration.json（run_calibration.py 產生的固定座位表）
     2. 用 YOLO 模型偵測畫面中的 person（seat 這次不用重新偵測，
        座位位置直接拿校準表裡固定的座標）
-    3. 每個座位跟所有偵測到的 person 做配對：
-       - person bbox 底部中心點落在座位框內 → occupied
-       - 或 person bbox 跟座位框 IoU 超過門檻 → occupied
-       （兩個條件任一成立就算佔用，比單用IoU更抗坐姿變化，
-       比單用中心點更抗bbox定位誤差）
+    3. 每個偵測到的 person，配對到「分數最高的一個座位」（而不是每個座位
+       各自獨立判斷），確保 occupied_count 不會超過 person_count：
+       - person bbox 底部中心點落在座位框內 → 最高優先權的匹配
+       - 否則用 IoU 當分數，取分數最高的座位
     4. 組裝成最終 JSON，印出並可選擇存檔
 
 用法範例：
@@ -45,7 +46,7 @@ from calibrate import _compute_iou, BBox
 
 
 def load_calibration(path: str) -> Dict[str, BBox]:
-    # 讀取 seat_calibration.json，把 list轉回 tuple
+    """讀取 seat_calibration.json，把 list 轉回 tuple"""
     with open(path, "r", encoding="utf-8") as f:
         raw = json.load(f)
     return {seat_id: tuple(box) for seat_id, box in raw.items()}
@@ -54,8 +55,9 @@ def load_calibration(path: str) -> Dict[str, BBox]:
 def detect_persons(
     image_path: str, model_path: str, conf: float, person_class_name: str = "person"
 ) -> List[BBox]:
-    
-    #用 YOLO 模型對畫面跑推論，只取出 person 這個 class 的偵測框。
+    """
+    用 YOLO 模型對畫面跑推論，只取出 person 這個 class 的偵測框。
+    """
     image = cv2.imread(image_path)
     if image is None:
         raise FileNotFoundError(f"無法讀取圖片，請確認路徑是否正確：{image_path}")
@@ -85,24 +87,62 @@ def detect_persons(
     return person_boxes
 
 
-def is_seat_occupied(seat_box: BBox, person_boxes: List[BBox], iou_thresh: float = 0.15) -> bool:
+def match_persons_to_seats(
+    seat_calibration: Dict[str, BBox],
+    person_boxes: List[BBox],
+    iou_thresh: float = 0.15,
+) -> Dict[str, str]:
     """
-    判斷一個座位是否被佔用。
+    把每個偵測到的 person 配對到「分數最高的一個座位」，而不是讓每個座位
+    各自獨立判斷「這個人符不符合佔用條件」。
 
-    兩個條件任一成立就算佔用：
-    1. person bbox 底部中心點（人站/坐的落地位置）落在座位框內
-       —— 這個對「坐姿變化」比較抗干擾，不管人怎麼坐，落地點通常都在座位範圍
-    2. person bbox 跟座位框的 IoU 超過門檻
-       —— 這個補足「人站在座位前方、bbox 底部剛好卡在框外一點點」的情況
+    原本用 is_seat_occupied() 對每個座位各自檢查的做法有個漏洞：
+    如果座位框彼此有重疊（例如攝影機透視角度造成相鄰排的框互相重疊），
+    同一個人的 bbox 有可能同時滿足兩個座位的佔用條件，
+    導致 person_count=1 卻算出 occupied_count=2 這種不合理結果
+    （一個人不可能同時坐兩個不相鄰的座位）。
+
+    做法：對每個 person，算出他跟「每一個座位」的匹配分數，
+    只認定分數最高的那一個座位為佔用，確保 occupied_count 不會超過 person_count。
+
+    分數計算：
+        - person bbox 底部中心點落在座位框內 → 視為最強匹配(優先權最高)
+        - 否則用 IoU 當作分數
     """
+    occupied_seat_ids = set()
+
     for p in person_boxes:
         px_center = (p[0] + p[2]) / 2
         py_bottom = p[3]
-        if seat_box[0] <= px_center <= seat_box[2] and seat_box[1] <= py_bottom <= seat_box[3]:
-            return True
-        if _compute_iou(seat_box, p) > iou_thresh:
-            return True
-    return False
+
+        best_seat_id = None
+        best_score = 0.0
+        best_is_containment = False
+
+        for seat_id, seat_box in seat_calibration.items():
+            contains = (
+                seat_box[0] <= px_center <= seat_box[2]
+                and seat_box[1] <= py_bottom <= seat_box[3]
+            )
+            iou = _compute_iou(seat_box, p)
+
+            # containment 一律贏過純IoU匹配；同樣是containment或同樣是IoU時比分數
+            is_better = (
+                (contains and not best_is_containment)
+                or (contains == best_is_containment and iou > best_score)
+            )
+            if is_better:
+                best_seat_id = seat_id
+                best_score = iou
+                best_is_containment = contains
+
+        if best_seat_id is not None and (best_is_containment or best_score > iou_thresh):
+            occupied_seat_ids.add(best_seat_id)
+
+    return {
+        seat_id: ("occupied" if seat_id in occupied_seat_ids else "empty")
+        for seat_id in sorted(seat_calibration.keys(), key=_seat_sort_key)
+    }
 
 
 def _seat_sort_key(seat_id: str):
@@ -119,11 +159,8 @@ def build_result(
     person_boxes: List[BBox],
     iou_thresh: float = 0.15,
 ) -> dict:
-    # 把座位校準表+ 偵測到的person，組裝成最終輸出的JSON結構
-    seat_status: Dict[str, str] = {}
-    for seat_id in sorted(seat_calibration.keys(), key=_seat_sort_key):
-        box = seat_calibration[seat_id]
-        seat_status[seat_id] = "occupied" if is_seat_occupied(box, person_boxes, iou_thresh) else "empty"
+    """把座位校準表 + 偵測到的 person，組裝成最終輸出的 JSON 結構"""
+    seat_status = match_persons_to_seats(seat_calibration, person_boxes, iou_thresh)
 
     occupied_count = sum(1 for v in seat_status.values() if v == "occupied")
 
