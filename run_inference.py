@@ -26,14 +26,13 @@ run_inference.py
        - 否則用 IoU 當分數，取分數最高的座位
     4. 組裝成最終 JSON，印出並可選擇存檔
 
-執行前請先安裝套件：
-    pip install ultralytics opencv-python-headless numpy
-
 用法範例：
     python run_inference.py \\
         --image current_frame.jpg \\
         --model runs/detect/seat_detector/weights/best.pt \\
         --calibration seat_calibration.json
+
+我是這樣跑的: python run_inference.py --image assets/pictures/main/main2.png --model runs/detect/seat_detector-3/weights/best.pt --calibration seat_calibration.json
 """
 
 import argparse
