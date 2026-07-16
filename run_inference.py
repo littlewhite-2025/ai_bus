@@ -26,6 +26,9 @@ run_inference.py
        - 否則用 IoU 當分數，取分數最高的座位
     4. 組裝成最終 JSON，印出並可選擇存檔
 
+執行前請先安裝套件：
+    pip install ultralytics opencv-python-headless numpy
+
 用法範例：
     python run_inference.py \\
         --image current_frame.jpg \\
@@ -91,6 +94,7 @@ def match_persons_to_seats(
     seat_calibration: Dict[str, BBox],
     person_boxes: List[BBox],
     iou_thresh: float = 0.15,
+    containment_bonus: float = 0.2,
 ) -> Dict[str, str]:
     """
     把每個偵測到的 person 配對到「分數最高的一個座位」，而不是讓每個座位
@@ -102,12 +106,15 @@ def match_persons_to_seats(
     導致 person_count=1 卻算出 occupied_count=2 這種不合理結果
     （一個人不可能同時坐兩個不相鄰的座位）。
 
-    做法：對每個 person，算出他跟「每一個座位」的匹配分數，
-    只認定分數最高的那一個座位為佔用，確保 occupied_count 不會超過 person_count。
+    分數計算：score = IoU + (containment_bonus，如果底部中心點落在座位框內)
 
-    分數計算：
-        - person bbox 底部中心點落在座位框內 → 視為最強匹配(優先權最高)
-        - 否則用 IoU 當作分數
+    注意：containment（底部中心點落在框內）故意只當「加分項」，不是絕對優先權。
+    原因：像公車這種前後排座位的場景，前一排的椅背/頭枕會擋住後排乘客的下半身，
+    YOLO 偵測到的 person bbox 常常只到胸口/肩膀就被切斷，這時候 bbox 底部
+    根本不是「人真正坐的位置」，而是被前方椅背擋住的視覺邊界，很容易剛好落在
+    「前一排」的座位框裡，造成誤判成前一排有人坐、而不是實際坐的那一排。
+    改成加分制之後，即使某座位有 containment，只要另一個座位的整體重疊面積(IoU)
+    明顯更大，還是會選 IoU 較高、視覺上更合理的那個座位。
     """
     occupied_seat_ids = set()
 
@@ -117,7 +124,6 @@ def match_persons_to_seats(
 
         best_seat_id = None
         best_score = 0.0
-        best_is_containment = False
 
         for seat_id, seat_box in seat_calibration.items():
             contains = (
@@ -125,18 +131,13 @@ def match_persons_to_seats(
                 and seat_box[1] <= py_bottom <= seat_box[3]
             )
             iou = _compute_iou(seat_box, p)
+            score = iou + (containment_bonus if contains else 0.0)
 
-            # containment 一律贏過純IoU匹配；同樣是containment或同樣是IoU時比分數
-            is_better = (
-                (contains and not best_is_containment)
-                or (contains == best_is_containment and iou > best_score)
-            )
-            if is_better:
+            if score > best_score:
+                best_score = score
                 best_seat_id = seat_id
-                best_score = iou
-                best_is_containment = contains
 
-        if best_seat_id is not None and (best_is_containment or best_score > iou_thresh):
+        if best_seat_id is not None and best_score > iou_thresh:
             occupied_seat_ids.add(best_seat_id)
 
     return {
