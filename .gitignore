@@ -4,6 +4,7 @@ assets/
 training_files/
 
 .venv/
+.qodo/
 *.zip
 
 *.log
