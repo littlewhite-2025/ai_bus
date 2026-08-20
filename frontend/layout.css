@@ -1,0 +1,130 @@
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Topbar ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border-faint);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg-topbar);
+  backdrop-filter: blur(10px);
+}
+
+/* ---------- Shell: sidebar + main ---------- */
+.layout {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar {
+  border-bottom: 1px solid var(--border-faint);
+  padding: var(--sp-3) var(--sp-5);
+}
+
+.route-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.route-list::-webkit-scrollbar {
+  display: none;
+}
+
+.main {
+  flex: 1;
+  padding: var(--sp-5);
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+/* ---------- Desktop dashboard ---------- */
+@media (min-width: 960px) {
+  .topbar {
+    padding: var(--sp-4) var(--sp-7);
+  }
+
+  .layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .sidebar {
+    width: 280px;
+    flex: 0 0 280px;
+    border-bottom: none;
+    border-right: 1px solid var(--border-faint);
+    padding: var(--sp-5);
+    align-self: stretch;
+    position: sticky;
+    top: 65px;
+    height: calc(100vh - 65px);
+  }
+
+  .sidebar__search {
+    margin-bottom: var(--sp-4);
+  }
+
+  .route-list {
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .main {
+    max-width: 880px;
+    padding: var(--sp-7) var(--sp-8);
+    margin: 0;
+  }
+
+  .stat-row {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1.4fr;
+    gap: var(--sp-6);
+    align-items: start;
+  }
+
+  .content-grid .bus-card {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .content-grid .stat-row {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .content-grid .seat-panel {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .seat-panel {
+    max-height: none !important;
+    opacity: 1 !important;
+  }
+
+  .console {
+    grid-column: 1 / -1;
+  }
+}

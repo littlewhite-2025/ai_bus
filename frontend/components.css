@@ -1,0 +1,646 @@
+/* ============ Brand ============ */
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-subtle);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.brand-mark svg {
+  width: 20px;
+  height: 20px;
+}
+
+.topbar__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-md);
+  letter-spacing: -0.01em;
+}
+
+.topbar__subtitle {
+  font-size: var(--fs-2xs);
+  color: var(--ink-tertiary);
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px 12px 6px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--ink-secondary);
+  letter-spacing: 0.02em;
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--status-empty);
+  box-shadow: 0 0 0 0 rgba(61, 220, 132, 0.6);
+  animation: pulse-dot 2.2s var(--ease-out) infinite;
+}
+
+@keyframes pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(61, 220, 132, 0.55);
+  }
+
+  70% {
+    box-shadow: 0 0 0 7px rgba(61, 220, 132, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(61, 220, 132, 0);
+  }
+}
+
+/* ============ Sidebar / route search ============ */
+.sidebar__eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--ink-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--sp-3);
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .sidebar__eyebrow {
+    display: block;
+  }
+}
+
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 9px var(--sp-3);
+}
+
+.search-field svg {
+  width: 15px;
+  height: 15px;
+  color: var(--ink-tertiary);
+  flex: none;
+}
+
+.search-field input {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--ink-primary);
+  font-size: var(--fs-sm);
+  width: 100%;
+  font-family: var(--font-body);
+}
+
+.search-field input::placeholder {
+  color: var(--ink-tertiary);
+}
+
+.route-chip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-faint);
+  background: var(--bg-surface);
+  text-align: left;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+  min-width: 168px;
+}
+
+@media (min-width: 960px) {
+  .route-chip {
+    min-width: 0;
+    width: 100%;
+    margin-bottom: var(--sp-2);
+  }
+}
+
+.route-chip:hover {
+  border-color: var(--border-subtle);
+}
+
+.route-chip[aria-pressed="true"] {
+  background: var(--bg-surface-raised);
+  border-color: var(--chip-accent, var(--route-accent));
+}
+
+.route-chip__badge {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-xs);
+  flex: none;
+  background: var(--chip-accent-dim, var(--route-accent-dim));
+  color: var(--chip-accent, var(--route-accent));
+}
+
+.route-chip__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.route-chip__route {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.route-chip__meta {
+  font-size: var(--fs-2xs);
+  color: var(--ink-tertiary);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.route-chip__status {
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* ============ Bus card (hero identity) ============ */
+.bus-card {
+  position: relative;
+  padding: var(--sp-6) var(--sp-5);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(155deg, var(--route-accent-dim), transparent 55%),
+    var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.bus-card::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--route-accent), transparent);
+  opacity: 0.7;
+}
+
+.bus-card__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.route-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-pill);
+  background: var(--route-accent-dim);
+  color: var(--route-accent);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-lg);
+  letter-spacing: -0.01em;
+}
+
+.route-badge__label {
+  font-size: var(--fs-2xs);
+  font-family: var(--font-mono);
+  color: var(--ink-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.bus-card__plate {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--ink-secondary);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  letter-spacing: 0.04em;
+}
+
+.bus-card__figure {
+  margin-top: var(--sp-5);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+}
+
+.bus-card__number {
+  font-family: var(--font-display);
+  font-size: var(--fs-3xl);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+
+.bus-card__number-unit {
+  font-size: var(--fs-md);
+  color: var(--ink-tertiary);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.bus-card__number-label {
+  font-size: var(--fs-xs);
+  color: var(--ink-secondary);
+  margin-top: 2px;
+}
+
+.crowd-meter {
+  flex: 1;
+}
+
+.crowd-meter__label {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-xs);
+  color: var(--ink-secondary);
+  margin-bottom: var(--sp-2);
+}
+
+.crowd-meter__value {
+  font-weight: 700;
+  font-family: var(--font-display);
+}
+
+.crowd-meter__track {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface-sunken);
+  overflow: hidden;
+  border: 1px solid var(--border-faint);
+}
+
+.crowd-meter__fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--crowd-color, var(--status-empty));
+  width: var(--crowd-pct, 0%);
+  transition: width var(--dur-mid) var(--ease-out), background var(--dur-mid) var(--ease-out);
+}
+
+/* ============ Stat row ============ */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+}
+
+.stat-tile {
+  padding: var(--sp-4);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-faint);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.stat-tile__icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: var(--tile-accent-dim);
+  color: var(--tile-accent);
+}
+
+.stat-tile__icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.stat-tile__value {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stat-tile__unit {
+  font-size: var(--fs-xs);
+  color: var(--ink-tertiary);
+  font-weight: 500;
+}
+
+.stat-tile__label {
+  font-size: var(--fs-2xs);
+  color: var(--ink-secondary);
+}
+
+/* ============ CTA (mobile toggle) ============ */
+.cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: var(--sp-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-raised);
+  color: var(--ink-primary);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+.cta:hover {
+  border-color: var(--route-accent);
+}
+
+.cta svg {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--dur-mid) var(--ease-out);
+}
+
+.cta[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+/* ============ Seat panel + schematic ============ */
+.seat-panel {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-faint);
+  background: var(--bg-surface);
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height var(--dur-slow) var(--ease-out), opacity var(--dur-mid) var(--ease-out);
+}
+
+.seat-panel.is-open {
+  max-height: 900px;
+  opacity: 1;
+}
+
+.seat-panel__inner {
+  padding: var(--sp-5);
+}
+
+.seat-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-5);
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.seat-panel__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+
+.legend {
+  display: flex;
+  gap: var(--sp-4);
+  font-size: var(--fs-xs);
+  color: var(--ink-secondary);
+}
+
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.bus-schematic {
+  position: relative;
+  margin: 0 auto;
+  max-width: 340px;
+  padding: var(--sp-6) var(--sp-4) var(--sp-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: 28px 28px 16px 16px;
+  background: var(--bg-surface-sunken);
+  overflow: hidden;
+}
+
+.bus-schematic__scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 46%;
+  background: linear-gradient(180deg, transparent, rgba(61, 220, 132, 0.16), transparent);
+  pointer-events: none;
+  animation: scan-sweep 2.4s var(--ease-out) 1;
+}
+
+@keyframes scan-sweep {
+  0% {
+    top: -46%;
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  85% {
+    opacity: 1;
+  }
+
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.seat-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--seat-cols, 4), 1fr);
+  gap: var(--sp-3);
+  position: relative;
+}
+
+.seat-grid__aisle-gap {
+  width: var(--sp-3);
+}
+
+.seat {
+  aspect-ratio: 1;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: var(--status-empty-dim);
+  border: 1px solid var(--border-faint);
+  position: relative;
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+.seat::before {
+  content: "";
+  width: 55%;
+  height: 55%;
+  border-radius: 50%;
+  background: var(--status-empty);
+}
+
+.seat[data-state="occupied"] {
+  background: var(--status-occupied-dim);
+}
+
+.seat[data-state="occupied"]::before {
+  background: var(--status-occupied);
+}
+
+.seat__id {
+  position: absolute;
+  bottom: 3px;
+  right: 5px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--ink-tertiary);
+}
+
+.seat-grid__col-gap-3 {
+  grid-column: 3;
+  margin-left: calc(var(--sp-3) * -1);
+}
+
+/* visually separate A / B blocks with a thin aisle rule */
+.bus-schematic__aisle {
+  position: absolute;
+  top: var(--sp-6);
+  bottom: var(--sp-5);
+  left: 50%;
+  width: 1px;
+  background: repeating-linear-gradient(to bottom,
+      var(--border-subtle) 0 6px,
+      transparent 6px 12px);
+  transform: translateX(-1px);
+}
+
+.seat-panel__foot {
+  margin-top: var(--sp-5);
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-2xs);
+  font-family: var(--font-mono);
+  color: var(--ink-tertiary);
+}
+
+/* ============ Console strip (footer diagnostic) ============ */
+.console {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-sunken);
+  border: 1px solid var(--border-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--ink-secondary);
+  flex-wrap: wrap;
+}
+
+.console__status {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--status-empty);
+  letter-spacing: 0.02em;
+}
+
+.console__timestamp {
+  color: var(--ink-tertiary);
+}
+
+/* On desktop the seat schematic is always visible as the hero visual,
+   so the mobile reveal button is redundant. */
+@media (min-width: 960px) {
+  .cta {
+    display: none;
+  }
+}
+
+/* ============ Theme Toggle & Actions ============ */
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.theme-toggle {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--ink-primary);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  padding: 0;
+}
+
+.theme-toggle:hover {
+  background: var(--bg-surface-raised);
+  border-color: var(--route-accent);
+}
+
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+  grid-area: 1 / 1;
+  transition: transform var(--dur-mid) var(--ease-out), opacity var(--dur-mid) var(--ease-out);
+}
+
+/* Toggle icon visibility based on theme setting */
+body:not([data-theme="light"]) .theme-toggle__icon-sun {
+  opacity: 0;
+  transform: rotate(45deg) scale(0.5);
+}
+
+body[data-theme="light"] .theme-toggle__icon-moon {
+  opacity: 0;
+  transform: rotate(-45deg) scale(0.5);
+}
