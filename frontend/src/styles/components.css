@@ -54,23 +54,17 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--status-empty);
-  box-shadow: 0 0 0 0 rgba(61, 220, 132, 0.6);
-  animation: pulse-dot 2.2s var(--ease-out) infinite;
+  background: var(--status-idle);
+  flex: none;
 }
 
-@keyframes pulse-dot {
-  0% {
-    box-shadow: 0 0 0 0 rgba(61, 220, 132, 0.55);
-  }
+.live-dot--connected {
+  animation: dot-breathe 2.4s ease-in-out infinite;
+}
 
-  70% {
-    box-shadow: 0 0 0 7px rgba(61, 220, 132, 0);
-  }
-
-  100% {
-    box-shadow: 0 0 0 0 rgba(61, 220, 132, 0);
-  }
+@keyframes dot-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 
 /* ============ Sidebar / route search ============ */
@@ -195,26 +189,15 @@
   flex: none;
 }
 
-/* ============ Bus card (hero identity) ============ */
+/* ============ Bus card (identity block) ============ */
 .bus-card {
   position: relative;
   padding: var(--sp-6) var(--sp-5);
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(155deg, var(--route-accent-dim), transparent 55%),
-    var(--bg-surface);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
+  border-top: 2px solid var(--route-accent);
   box-shadow: var(--shadow-card);
-  overflow: hidden;
-}
-
-.bus-card::after {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--route-accent), transparent);
-  opacity: 0.7;
 }
 
 .bus-card__row {
@@ -261,6 +244,7 @@
   display: flex;
   align-items: center;
   gap: var(--sp-5);
+  flex-wrap: wrap;
 }
 
 .bus-card__number {
@@ -285,6 +269,7 @@
 
 .crowd-meter {
   flex: 1;
+  min-width: 160px;
 }
 
 .crowd-meter__label {
@@ -311,7 +296,7 @@
 .crowd-meter__fill {
   height: 100%;
   border-radius: var(--radius-pill);
-  background: var(--crowd-color, var(--status-empty));
+  background: var(--crowd-color, var(--status-idle));
   width: var(--crowd-pct, 0%);
   transition: width var(--dur-mid) var(--ease-out), background var(--dur-mid) var(--ease-out);
 }
@@ -342,7 +327,6 @@
   background: var(--tile-accent-dim);
   color: var(--tile-accent);
 }
-
 .stat-tile__icon svg {
   width: 14px;
   height: 14px;
@@ -380,7 +364,7 @@
   color: var(--ink-primary);
   font-size: var(--fs-base);
   font-weight: 600;
-  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+  transition: border-color var(--dur-fast) var(--ease-out);
 }
 
 .cta:hover {
@@ -397,6 +381,12 @@
   transform: rotate(180deg);
 }
 
+@media (min-width: 960px) {
+  .cta {
+    display: none;
+  }
+}
+
 /* ============ Seat panel + schematic ============ */
 .seat-panel {
   border-radius: var(--radius-lg);
@@ -405,7 +395,7 @@
   overflow: hidden;
   max-height: 0;
   opacity: 0;
-  transition: max-height var(--dur-slow) var(--ease-out), opacity var(--dur-mid) var(--ease-out);
+  transition: max-height var(--dur-mid) var(--ease-out), opacity var(--dur-mid) var(--ease-out);
 }
 
 .seat-panel.is-open {
@@ -455,41 +445,10 @@
   position: relative;
   margin: 0 auto;
   max-width: 340px;
-  padding: var(--sp-6) var(--sp-4) var(--sp-5);
+  padding: var(--sp-5) var(--sp-4);
   border: 1px solid var(--border-subtle);
-  border-radius: 28px 28px 16px 16px;
+  border-radius: 16px;
   background: var(--bg-surface-sunken);
-  overflow: hidden;
-}
-
-.bus-schematic__scan {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 46%;
-  background: linear-gradient(180deg, transparent, rgba(61, 220, 132, 0.16), transparent);
-  pointer-events: none;
-  animation: scan-sweep 2.4s var(--ease-out) 1;
-}
-
-@keyframes scan-sweep {
-  0% {
-    top: -46%;
-    opacity: 0;
-  }
-
-  15% {
-    opacity: 1;
-  }
-
-  85% {
-    opacity: 1;
-  }
-
-  100% {
-    top: 100%;
-    opacity: 0;
-  }
 }
 
 .seat-grid {
@@ -497,10 +456,6 @@
   grid-template-columns: repeat(var(--seat-cols, 4), 1fr);
   gap: var(--sp-3);
   position: relative;
-}
-
-.seat-grid__aisle-gap {
-  width: var(--sp-3);
 }
 
 .seat {
@@ -516,8 +471,8 @@
 
 .seat::before {
   content: "";
-  width: 55%;
-  height: 55%;
+  width: 50%;
+  height: 50%;
   border-radius: 50%;
   background: var(--status-empty);
 }
@@ -525,7 +480,6 @@
 .seat[data-state="occupied"] {
   background: var(--status-occupied-dim);
 }
-
 .seat[data-state="occupied"]::before {
   background: var(--status-occupied);
 }
@@ -539,21 +493,18 @@
   color: var(--ink-tertiary);
 }
 
-.seat-grid__col-gap-3 {
-  grid-column: 3;
-  margin-left: calc(var(--sp-3) * -1);
-}
-
 /* visually separate A / B blocks with a thin aisle rule */
 .bus-schematic__aisle {
   position: absolute;
-  top: var(--sp-6);
+  top: var(--sp-5);
   bottom: var(--sp-5);
   left: 50%;
   width: 1px;
-  background: repeating-linear-gradient(to bottom,
-      var(--border-subtle) 0 6px,
-      transparent 6px 12px);
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--border-subtle) 0 6px,
+    transparent 6px 12px
+  );
   transform: translateX(-1px);
 }
 
@@ -564,9 +515,11 @@
   font-size: var(--fs-2xs);
   font-family: var(--font-mono);
   color: var(--ink-tertiary);
+  flex-wrap: wrap;
+  gap: var(--sp-2);
 }
 
-/* ============ Console strip (footer diagnostic) ============ */
+/* ============ Console strip (status footer) ============ */
 .console {
   display: flex;
   align-items: center;
@@ -586,61 +539,9 @@
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  color: var(--status-empty);
   letter-spacing: 0.02em;
 }
 
 .console__timestamp {
   color: var(--ink-tertiary);
-}
-
-/* On desktop the seat schematic is always visible as the hero visual,
-   so the mobile reveal button is redundant. */
-@media (min-width: 960px) {
-  .cta {
-    display: none;
-  }
-}
-
-/* ============ Theme Toggle & Actions ============ */
-.topbar__actions {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-}
-
-.theme-toggle {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  color: var(--ink-primary);
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  display: grid;
-  place-items: center;
-  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
-  padding: 0;
-}
-
-.theme-toggle:hover {
-  background: var(--bg-surface-raised);
-  border-color: var(--route-accent);
-}
-
-.theme-toggle svg {
-  width: 20px;
-  height: 20px;
-  grid-area: 1 / 1;
-  transition: transform var(--dur-mid) var(--ease-out), opacity var(--dur-mid) var(--ease-out);
-}
-
-/* Toggle icon visibility based on theme setting */
-body:not([data-theme="light"]) .theme-toggle__icon-sun {
-  opacity: 0;
-  transform: rotate(45deg) scale(0.5);
-}
-
-body[data-theme="light"] .theme-toggle__icon-moon {
-  opacity: 0;
-  transform: rotate(-45deg) scale(0.5);
 }

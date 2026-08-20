@@ -5,16 +5,14 @@
 }
 
 html,
-body {
+body,
+#root {
   height: 100%;
 }
 
 body {
   margin: 0;
   background: var(--bg-canvas);
-  background-image:
-    radial-gradient(1200px 600px at 15% -10%, rgba(229, 72, 77, 0.06), transparent 60%),
-    radial-gradient(900px 500px at 110% 10%, rgba(79, 142, 247, 0.05), transparent 60%);
   color: var(--ink-primary);
   font-family: var(--font-body);
   font-size: var(--fs-base);
@@ -35,6 +33,9 @@ button {
   font-family: inherit;
   color: inherit;
   cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
 }
 
 .tabular {
@@ -52,7 +53,6 @@ button {
   color: var(--ink-inverse);
 }
 
-/* Utility */
 .sr-only {
   position: absolute;
   width: 1px;

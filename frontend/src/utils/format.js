@@ -3,7 +3,23 @@ export const ROUTE_COLORS = {
   orange: { accent: "var(--route-orange)", dim: "var(--route-orange-dim)", label: "橘線" },
   blue: { accent: "var(--route-blue)", dim: "var(--route-blue-dim)", label: "藍線" },
   green: { accent: "var(--route-green)", dim: "var(--route-green-dim)", label: "綠線" },
+  neutral: { accent: "var(--route-neutral)", dim: "var(--route-neutral-dim)", label: "" },
 };
+
+export function routeColorOf(key) {
+  return ROUTE_COLORS[key] ?? ROUTE_COLORS.neutral;
+}
+
+export const CONNECTION_STATUS = {
+  idle: { label: "尚未連接後端", color: "var(--status-idle)", live: false },
+  connecting: { label: "連線中", color: "var(--status-warn)", live: false },
+  connected: { label: "系統連線正常", color: "var(--status-empty)", live: true },
+  error: { label: "連線發生錯誤", color: "var(--status-occupied)", live: false },
+};
+
+export function connectionStatusOf(key) {
+  return CONNECTION_STATUS[key] ?? CONNECTION_STATUS.idle;
+}
 
 /**
  * Derive a crowd level (空曠 / 普通 / 擁擠) from the occupied ratio.
@@ -17,8 +33,10 @@ export function crowdLevel(occupied, total) {
   return { key: "crowded", label: "擁擠", color: "var(--status-occupied)" };
 }
 
-export function formatTime(date) {
-  const d = date instanceof Date ? date : new Date(date);
+export function formatTime(value) {
+  if (!value) return "--:--:--";
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return "--:--:--";
   return d.toLocaleTimeString("zh-TW", { hour12: false });
 }
 
@@ -37,6 +55,7 @@ export function padSeat(n) {
  */
 export function buildSeatMatrix(occupiedSeats) {
   const total = Object.keys(occupiedSeats).length;
+  if (!total) return [];
   const perBlock = total / 2;
   const rows = Math.max(1, Math.round(perBlock / 2));
   const matrix = [];

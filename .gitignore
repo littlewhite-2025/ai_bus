@@ -11,3 +11,5 @@ training_files/
 
 calibration_preview.png
 __pycache__/
+
+.env

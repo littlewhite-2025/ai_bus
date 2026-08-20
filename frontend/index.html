@@ -1,77 +1,18 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AI 智慧公車 · 即時座位監控</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link
-  href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
-  rel="stylesheet"
-/>
-<link rel="stylesheet" href="tokens.css" />
-<link rel="stylesheet" href="base.css" />
-<link rel="stylesheet" href="layout.css" />
-<link rel="stylesheet" href="components.css" />
-</head>
-<body>
-<div class="app">
-
-  <header class="topbar">
-    <div class="topbar__brand">
-      <span class="brand-mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 16V6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v10"/>
-          <path d="M4 16h16v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2Z"/>
-          <path d="M4 11h16"/>
-        </svg>
-      </span>
-      <div>
-        <div class="topbar__title">AI 智慧公車</div>
-        <div class="topbar__subtitle">即時座位監控系統</div>
-      </div>
-    </div>
-    <div class="topbar__actions">
-      <button id="themeToggle" class="theme-toggle" aria-label="切換主題">
-        <svg class="theme-toggle__icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="4"></circle>
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
-        </svg>
-        <svg class="theme-toggle__icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
-        </svg>
-      </button>
-      <span class="live-pill"><span class="live-dot"></span>AI 監控中</span>
-    </div>
-  </header>
-
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="sidebar__eyebrow">路線</div>
-      <div class="sidebar__search" id="searchField"></div>
-      <ul class="route-list" id="routeList"></ul>
-    </aside>
-
-    <main class="main">
-      <div class="content-grid">
-        <section class="bus-card" id="busCard" aria-live="polite"></section>
-
-        <section class="stat-row" id="statRow" aria-label="座位統計"></section>
-
-        <button class="cta" id="toggleSeatMap" aria-expanded="false" aria-controls="seatPanel">
-          <span class="cta__label">查看車內座位</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-        </button>
-
-        <section class="seat-panel" id="seatPanel" aria-label="車內座位圖"></section>
-      </div>
-
-      <footer class="console" id="console" role="status"></footer>
-    </main>
-  </div>
-</div>
-
-<script type="module" src="main.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 智慧公車 · 即時座位監控</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
