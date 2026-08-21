@@ -5,9 +5,9 @@
 // fixed display copy here. Swap these two constants directly if the
 // physical bus changes; don't wire them up to any kind of lookup.
 export const BUS_META = {
-  route: "紅28",
+  route: "default",
   routeColor: "red",
-  plate: "KKA-1234",
+  plate: "AAA-1234",
 };
 
 export const TOTAL_SEATS = 16;

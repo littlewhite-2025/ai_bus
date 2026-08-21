@@ -11,15 +11,11 @@ seat_calibration.json 同一層目錄下執行。
 
 啟動（跟 run_inference.py / run_camera_detect.py 一樣用 argparse，不用改程式碼）：
     # 先用靜態圖片測試整條路（確認「後端有沒有在監聽」跟「前端串接」這兩件事）：
-    python server.py --model runs/detect/seat_detector-3/weights/best.pt \
-        --calibration seat_calibration.json \
-        --image assets/pictures/main/main2.png
+    # python server.py --model runs/detect/seat_detector-3/weights/best.pt --calibration seat_calibration.json --image assets/pictures/main/main2.png
 
     # 確認攝影機編號可用（跟 run_camera_detect.py 用同一顆鏡頭測過的編號）之後，
     # 改用即時攝影機畫面：
-    python server.py --model runs/detect/seat_detector-3/weights/best.pt \
-        --calibration seat_calibration.json \
-        --camera 0
+    # python server.py --model runs/detect/seat_detector-3/weights/best.pt --calibration seat_calibration.json --camera 0
 
 --image 跟 --camera 只能擇一；不給的話預設走 --camera 0。
 
