@@ -1,8 +1,9 @@
+import { BUS_META } from "../constants/defaults";
 import { routeColorOf, crowdLevel } from "../utils/format";
 
-export default function BusCard({ bus }) {
-  const c = routeColorOf(bus.routeColor);
-  const { occupied_count, total_seats } = bus.seats;
+export default function BusCard({ seats }) {
+  const c = routeColorOf(BUS_META.routeColor);
+  const { occupied_count, total_seats } = seats;
   const empty = total_seats - occupied_count;
   const level = crowdLevel(occupied_count, total_seats);
   const pct = total_seats ? Math.round((occupied_count / total_seats) * 100) : 0;
@@ -15,10 +16,10 @@ export default function BusCard({ bus }) {
     >
       <div className="bus-card__row">
         <div className="route-badge">
-          {bus.route}
+          {BUS_META.route}
           <span className="route-badge__label">{c.label}公車</span>
         </div>
-        <div className="bus-card__plate tabular">{bus.plate}</div>
+        <div className="bus-card__plate tabular">{BUS_META.plate}</div>
       </div>
 
       <div className="bus-card__figure">

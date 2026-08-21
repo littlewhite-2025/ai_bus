@@ -17,32 +17,7 @@
   background: var(--bg-canvas);
 }
 
-/* ---------- Shell: sidebar + main ---------- */
-.layout {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.sidebar {
-  border-bottom: 1px solid var(--border-faint);
-  padding: var(--sp-3) var(--sp-5);
-}
-
-.route-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  gap: var(--sp-2);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.route-list::-webkit-scrollbar {
-  display: none;
-}
-
+/* ---------- Main content ---------- */
 .main {
   flex: 1;
   padding: var(--sp-5);
@@ -60,36 +35,10 @@
     padding: var(--sp-4) var(--sp-7);
   }
 
-  .layout {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-
-  .sidebar {
-    width: 280px;
-    flex: 0 0 280px;
-    border-bottom: none;
-    border-right: 1px solid var(--border-faint);
-    padding: var(--sp-5);
-    align-self: stretch;
-    position: sticky;
-    top: 65px;
-    height: calc(100vh - 65px);
-  }
-
-  .sidebar__search {
-    margin-bottom: var(--sp-4);
-  }
-
-  .route-list {
-    flex-direction: column;
-    overflow: visible;
-  }
-
   .main {
     max-width: 880px;
     padding: var(--sp-7) var(--sp-8);
-    margin: 0;
+    margin: 0 auto;
   }
 
   .stat-row {
@@ -116,10 +65,6 @@
   .content-grid .seat-panel {
     grid-column: 2;
     grid-row: 2;
-  }
-
-  .cta {
-    display: none;
   }
 
   .seat-panel {

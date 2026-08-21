@@ -1,18 +1,20 @@
-// Static route directory. Which buses exist is fleet/config data — it does
-// not depend on the AI inference backend, so it is safe to hard-code here
-// until there's a real fleet-management endpoint to source it from.
-export const ROUTE_DIRECTORY = [
-  { id: "kka1234", route: "紅28", routeColor: "red", plate: "KKA-1234" },
-  { id: "khh0721", route: "橘1", routeColor: "orange", plate: "KHH-0721" },
-  { id: "kbb5588", route: "藍25", routeColor: "blue", plate: "KBB-5588" },
-  { id: "kgg3302", route: "綠12", routeColor: "green", plate: "KGG-3302" },
-];
+// Single-vehicle deployment: the backend's JSON contract only ever outputs
+// occupied_seats / occupied_count / total_seats / person_count (see
+// run_inference.py's build_result()) — there is no vehicle ID in that
+// payload. Rather than inventing one on the frontend, route/plate are just
+// fixed display copy here. Swap these two constants directly if the
+// physical bus changes; don't wire them up to any kind of lookup.
+export const BUS_META = {
+  route: "紅28",
+  routeColor: "red",
+  plate: "KKA-1234",
+};
 
 export const TOTAL_SEATS = 16;
 
 /**
  * Builds a fully-empty occupied_seats map using the same seat-ID scheme as
- * the inference backend (see run_inference.py's JSON contract):
+ * the inference backend:
  *   A01..A08 (left block), B01..B08 (right block)
  */
 export function createDefaultSeatMap(total = TOTAL_SEATS) {
@@ -26,6 +28,7 @@ export function createDefaultSeatMap(total = TOTAL_SEATS) {
   return map;
 }
 
+/** Initial state before the first successful response from the backend. */
 export function createDefaultSeatSnapshot(total = TOTAL_SEATS) {
   return {
     occupied_seats: createDefaultSeatMap(total),
@@ -34,20 +37,3 @@ export function createDefaultSeatSnapshot(total = TOTAL_SEATS) {
     person_count: 0,
   };
 }
-
-/**
- * A bus that has not (yet) received a live snapshot from the backend.
- * connectionStatus stays "idle" until fetchBus/fetchFleet succeeds, so the
- * UI can tell "genuinely zero occupancy" apart from "no data yet" if that
- * distinction is ever needed.
- */
-export function createDefaultBus(meta) {
-  return {
-    ...meta,
-    seats: createDefaultSeatSnapshot(),
-    updatedAt: null,
-    connectionStatus: "idle",
-  };
-}
-
-export const DEFAULT_FLEET = ROUTE_DIRECTORY.map(createDefaultBus);

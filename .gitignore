@@ -13,3 +13,8 @@ calibration_preview.png
 __pycache__/
 
 .env
+node_modules/
+dist/
+
+*.md
+package-lock.json

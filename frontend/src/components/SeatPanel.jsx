@@ -1,8 +1,8 @@
 import { buildSeatMatrix } from "../utils/format";
 
-export default function SeatPanel({ bus, isOpen }) {
-  const matrix = buildSeatMatrix(bus.seats.occupied_seats);
-  const empty = bus.seats.total_seats - bus.seats.occupied_count;
+export default function SeatPanel({ seats, isOpen }) {
+  const matrix = buildSeatMatrix(seats.occupied_seats);
+  const empty = seats.total_seats - seats.occupied_count;
 
   return (
     <section className={`seat-panel${isOpen ? " is-open" : ""}`} aria-label="車內座位圖">
@@ -42,7 +42,7 @@ export default function SeatPanel({ bus, isOpen }) {
         </div>
 
         <div className="seat-panel__foot">
-          <span>剩餘座位 {empty} / {bus.seats.total_seats} 席</span>
+          <span>剩餘座位 {empty} / {seats.total_seats} 席</span>
           <span>座位以 AI 影像即時偵測</span>
         </div>
       </div>

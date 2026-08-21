@@ -1,7 +1,7 @@
 import { connectionStatusOf, formatTime } from "../utils/format";
 
-export default function ConsoleStrip({ bus }) {
-  const status = connectionStatusOf(bus.connectionStatus);
+export default function ConsoleStrip({ connectionStatus, updatedAt }) {
+  const status = connectionStatusOf(connectionStatus);
 
   return (
     <footer className="console" role="status">
@@ -12,7 +12,7 @@ export default function ConsoleStrip({ bus }) {
         />
         {status.label}
       </span>
-      <span className="console__timestamp tabular">AI 即時更新時間 {formatTime(bus.updatedAt)}</span>
+      <span className="console__timestamp tabular">AI 即時更新時間 {formatTime(updatedAt)}</span>
     </footer>
   );
 }
