@@ -1,8 +1,23 @@
-/* ============ Brand ============ */
+/* ============ Brand (also acts as reload button) ============ */
 .topbar__brand {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
+  border-radius: var(--radius-sm);
+  padding: 4px 6px 4px 4px;
+  margin: -4px -6px -4px -4px;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.topbar__brand:hover {
+  background: var(--bg-surface);
+}
+
+.topbar__brand-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .brand-mark {
@@ -36,6 +51,93 @@
   text-transform: uppercase;
 }
 
+@media (max-width: 479px) {
+  .topbar__subtitle {
+    display: none;
+  }
+}
+
+/* ============ Top nav links (desktop inline) ============ */
+.nav-link {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink-secondary);
+  letter-spacing: 0.04em;
+  padding: 6px 2px;
+  border-bottom: 2px solid transparent;
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+.nav-link:hover {
+  color: var(--ink-primary);
+}
+
+.nav-link.is-active {
+  color: var(--ink-primary);
+  border-color: var(--route-accent, var(--route-neutral));
+}
+
+/* ============ Nav dropdown contents ============ */
+.nav-menu__list {
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-2) var(--sp-5) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 720px) {
+  .nav-menu__list {
+    padding: var(--sp-2);
+  }
+}
+
+.nav-menu__link {
+  width: 100%;
+  text-align: left;
+  padding: var(--sp-3) var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink-secondary);
+  border-radius: var(--radius-sm);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.nav-menu__link:hover {
+  background: var(--bg-surface);
+  color: var(--ink-primary);
+}
+
+.nav-menu__link.is-active {
+  color: var(--route-accent, var(--ink-primary));
+}
+
+/* ============ Generic small icon button (theme toggle / GitHub / menu / scroll-top) ============ */
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-pill);
+  display: grid;
+  place-items: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--ink-secondary);
+  flex: none;
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.icon-btn:hover {
+  color: var(--ink-primary);
+  border-color: var(--route-accent, var(--border-subtle));
+}
+
+.icon-btn--raised {
+  background: var(--bg-surface-raised);
+  box-shadow: var(--shadow-card);
+}
+
 .live-pill {
   display: inline-flex;
   align-items: center;
@@ -48,6 +150,15 @@
   font-size: var(--fs-2xs);
   color: var(--ink-secondary);
   letter-spacing: 0.02em;
+}
+
+@media (max-width: 479px) {
+  .live-pill {
+    padding: 6px;
+  }
+  .live-pill__label {
+    display: none;
+  }
 }
 
 .live-dot {
@@ -422,4 +533,60 @@
 
 .console__timestamp {
   color: var(--ink-tertiary);
+}
+
+/* ============ Static page placeholders (About / News) ============ */
+.page__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.page__body {
+  color: var(--ink-secondary);
+  max-width: 60ch;
+}
+
+/* ============ Site footer ============ */
+.site-footer__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  font-size: var(--fs-xs);
+  color: var(--ink-secondary);
+}
+
+.site-footer__links {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.site-footer__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-secondary);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.site-footer__link:hover {
+  color: var(--ink-primary);
+}
+
+.site-footer__note {
+  margin-top: var(--sp-3);
+  font-size: var(--fs-2xs);
+  color: var(--ink-tertiary);
+}
+
+/* ============ Scroll-to-top ============ */
+.scroll-top {
+  /* layout/visibility (position, opacity, transform) come from .scroll-top
+     in layout.css — this just borrows .icon-btn's visual treatment */
+  width: 40px;
+  height: 40px;
 }

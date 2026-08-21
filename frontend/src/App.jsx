@@ -1,31 +1,38 @@
 import { useState } from "react";
 import { useSeatStatus } from "./hooks/useSeatStatus.js";
+import { useTheme } from "./hooks/useTheme.js";
 import TopBar from "./components/TopBar.jsx";
-import BusCard from "./components/BusCard.jsx";
-import StatRow from "./components/StatRow.jsx";
-import ToggleButton from "./components/ToggleButton.jsx";
-import SeatPanel from "./components/SeatPanel.jsx";
-import ConsoleStrip from "./components/ConsoleStrip.jsx";
+import HomePage from "./components/HomePage.jsx";
+import AboutPage from "./components/AboutPage.jsx";
+import NewsPage from "./components/NewsPage.jsx";
+import SiteFooter from "./components/SiteFooter.jsx";
+import ScrollTopButton from "./components/ScrollTopButton.jsx";
 
 export default function App() {
   const { seats, updatedAt, connectionStatus } = useSeatStatus();
-  const [seatPanelOpen, setSeatPanelOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const [page, setPage] = useState("home");
 
   return (
     <div className="app">
-      <TopBar connectionStatus={connectionStatus} />
+      <TopBar
+        connectionStatus={connectionStatus}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        currentPage={page}
+        onNavigate={setPage}
+      />
 
       <main className="main">
-        <div className="content-grid">
-          <BusCard seats={seats} />
-          <StatRow seats={seats} />
-
-          <ToggleButton isOpen={seatPanelOpen} onToggle={() => setSeatPanelOpen((v) => !v)} />
-          <SeatPanel seats={seats} isOpen={seatPanelOpen} />
-        </div>
-
-        <ConsoleStrip connectionStatus={connectionStatus} updatedAt={updatedAt} />
+        {page === "about" && <AboutPage />}
+        {page === "news" && <NewsPage />}
+        {page === "home" && (
+          <HomePage seats={seats} updatedAt={updatedAt} connectionStatus={connectionStatus} />
+        )}
       </main>
+
+      <SiteFooter />
+      <ScrollTopButton />
     </div>
   );
 }

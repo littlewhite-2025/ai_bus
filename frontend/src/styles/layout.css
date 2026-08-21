@@ -9,12 +9,65 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--sp-4);
   padding: var(--sp-4) var(--sp-5);
   border-bottom: 1px solid var(--border-faint);
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 30;
   background: var(--bg-canvas);
+}
+
+.topbar__nav {
+  display: none;
+}
+
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+@media (min-width: 720px) {
+  .topbar__nav {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-5);
+    margin-right: auto;
+    margin-left: var(--sp-6);
+  }
+}
+
+/* ---------- Nav dropdown ---------- */
+.nav-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 25;
+  background: var(--bg-canvas);
+  border-bottom: 1px solid var(--border-faint);
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height var(--dur-mid) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+
+.nav-menu.is-open {
+  max-height: 320px;
+  opacity: 1;
+}
+
+@media (min-width: 720px) {
+  .nav-menu {
+    left: auto;
+    right: var(--sp-5);
+    top: calc(100% + 8px);
+    width: 220px;
+    border: 1px solid var(--border-faint);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+  }
 }
 
 /* ---------- Main content ---------- */
@@ -26,15 +79,17 @@
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-5);
+  gap: var(--sp-6);
+}
+
+.content-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
 }
 
 /* ---------- Desktop dashboard ---------- */
 @media (min-width: 960px) {
-  .topbar {
-    padding: var(--sp-4) var(--sp-7);
-  }
-
   .main {
     max-width: 880px;
     padding: var(--sp-7) var(--sp-8);
@@ -75,4 +130,42 @@
   .console {
     grid-column: 1 / -1;
   }
+}
+
+/* ---------- Static pages (About / News placeholders) ---------- */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* ---------- Footer ---------- */
+.site-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border-faint);
+  padding: var(--sp-6) var(--sp-5);
+}
+
+@media (min-width: 960px) {
+  .site-footer {
+    padding: var(--sp-6) var(--sp-8);
+  }
+}
+
+/* ---------- Scroll-to-top ---------- */
+.scroll-top {
+  position: fixed;
+  right: var(--sp-5);
+  bottom: var(--sp-5);
+  z-index: 40;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity var(--dur-mid) var(--ease-out), transform var(--dur-mid) var(--ease-out);
+}
+
+.scroll-top.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }

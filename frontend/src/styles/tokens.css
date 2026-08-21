@@ -83,3 +83,43 @@
   --route-accent: var(--route-neutral);
   --route-accent-dim: var(--route-neutral-dim);
 }
+
+/* ---- Light theme ----
+   Toggled by setting data-theme="light" on <html> (see src/hooks/useTheme.js).
+   Same variable names as the dark palette above, so every component that
+   already reads var(--bg-surface) etc. gets the swap for free. */
+:root[data-theme="light"] {
+  --bg-canvas: #f4f4f2;
+  --bg-surface: #ffffff;
+  --bg-surface-raised: #ffffff;
+  --bg-surface-sunken: #ececea;
+  --border-subtle: #dcdcd9;
+  --border-faint: #e7e7e4;
+
+  --ink-primary: #1c1e21;
+  --ink-secondary: #5a5d63;
+  --ink-tertiary: #8d9095;
+  --ink-inverse: #ffffff;
+
+  --route-red: #c4453f;
+  --route-red-dim: #fbe4e2;
+  --route-orange: #b8722e;
+  --route-orange-dim: #f7e7d3;
+  --route-blue: #3f6fc4;
+  --route-blue-dim: #dfe8fa;
+  --route-green: #2f8f5c;
+  --route-green-dim: #dcf2e6;
+  --route-neutral: #6c6f75;
+  --route-neutral-dim: #ececea;
+
+  --status-empty: #2f9463;
+  --status-empty-dim: #dff0e7;
+  --status-occupied: #b8483d;
+  --status-occupied-dim: #f8e3e0;
+  --status-warn: #a9781f;
+  --status-warn-dim: #f5ecd8;
+  --status-idle: #8d9095;
+  --status-idle-dim: #ececea;
+
+  --shadow-card: 0 8px 20px -14px rgba(28, 30, 33, 0.18);
+}
