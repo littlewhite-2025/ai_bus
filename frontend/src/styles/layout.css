@@ -38,24 +38,23 @@
   }
 }
 
-/* ---------- Nav dropdown ---------- */
+/* ---------- Nav dropdown ----------
+   The visual "panel" is a gooey SVG-filtered blob layer (see components.css
+   .nav-menu__goo) that lives inside this box and fills it via transform:
+   scale(), not by animating height — .nav-menu itself only controls
+   position + click-through, so it stays at its natural (final) size the
+   whole time and the blob does the actual reveal animation. */
 .nav-menu {
   position: absolute;
   top: 100%;
   right: 0;
   left: 0;
   z-index: 25;
-  background: var(--bg-canvas);
-  border-bottom: 1px solid var(--border-faint);
-  overflow: hidden;
-  max-height: 0;
-  opacity: 0;
-  transition: max-height var(--dur-mid) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+  pointer-events: none;
 }
 
 .nav-menu.is-open {
-  max-height: 320px;
-  opacity: 1;
+  pointer-events: auto;
 }
 
 @media (min-width: 720px) {
@@ -64,9 +63,6 @@
     right: var(--sp-5);
     top: calc(100% + 8px);
     width: 220px;
-    border: 1px solid var(--border-faint);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-card);
   }
 }
 

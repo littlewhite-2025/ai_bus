@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { MorphIcon } from "morphicons/react";
 import { Menu, X } from "lucide"; // icon data, not components
-import { BusIcon, GithubIcon } from "../utils/icons.jsx";
+import { GithubIcon } from "../utils/icons.jsx";
 import { connectionStatusOf } from "../utils/format";
 import { NAV_LINKS, GITHUB_URL } from "../constants/site";
 import ThemeToggle from "./ThemeToggle.jsx";
@@ -28,7 +28,7 @@ export default function TopBar({ connectionStatus, theme, onToggleTheme, current
         title="重新載入頁面"
       >
         <span className="brand-mark">
-          <BusIcon />
+          <img src="/icons/brand-icon.png" alt="" className="brand-mark__img" />
         </span>
         <span className="topbar__brand-text">
           <span className="topbar__title">AI 智慧公車</span>
@@ -61,7 +61,7 @@ export default function TopBar({ connectionStatus, theme, onToggleTheme, current
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />
 
         <a
-          className="icon-btn"
+          className="icon-btn icon-btn--github"
           href={GITHUB_URL}
           target="_blank"
           rel="noopener noreferrer"
