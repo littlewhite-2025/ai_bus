@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-const SHOW_AFTER_PX = 320;
+const SHOW_AFTER_PX = 80;
 
 export function useScrollTop() {
   const [isVisible, setIsVisible] = useState(false);

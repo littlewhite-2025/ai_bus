@@ -21,8 +21,8 @@
 }
 
 .brand-mark {
-  width: 36px;
-  height: 36px;
+  width: 41px;
+  height: 41px;
   border-radius: var(--radius-sm);
   background: var(--bg-surface-raised);
   border: 1px solid var(--border-subtle);
@@ -37,8 +37,8 @@
 }
 
 .brand-mark__img {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
   display: block;
 }
@@ -71,7 +71,7 @@
   font-weight: 600;
   color: var(--ink-secondary);
   letter-spacing: 0.04em;
-  padding: 6px 2px;
+  padding: 8px 4px;
   transition: color var(--dur-fast) var(--ease-out);
 }
 
@@ -207,8 +207,8 @@
 
 /* ============ Generic small icon button (theme toggle / GitHub / menu / scroll-top) ============ */
 .icon-btn {
-  width: 34px;
-  height: 34px;
+  width: 39px;
+  height: 39px;
   border-radius: var(--radius-pill);
   display: grid;
   place-items: center;
@@ -231,6 +231,17 @@
   box-shadow: var(--shadow-card);
 }
 
+/* The hamburger sits furthest right and is the "primary" action that opens
+   the whole nav — make it a step bigger and visually raised so the row
+   reads with a bit of hierarchy instead of four identical dots. */
+.icon-btn--menu {
+  width: 44px;
+  height: 44px;
+  background: var(--bg-surface-raised);
+  border-color: var(--border-subtle);
+  box-shadow: var(--shadow-card);
+}
+
 /* GitHub link: the glyph itself spins on hover, the button chrome stays put */
 .icon-btn--github svg {
   transition: transform 0.6s var(--ease-out);
@@ -245,7 +256,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  padding: 6px 12px 6px 10px;
+  padding: 8px 14px 8px 12px;
   border-radius: var(--radius-pill);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -651,39 +662,77 @@
   max-width: 60ch;
 }
 
+.page__divider {
+  margin: var(--sp-5) 0;
+  border: none;
+  border-top: 1px solid var(--border-faint);
+}
+
 /* ============ Site footer ============ */
 .site-footer__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3);
-  font-size: var(--fs-xs);
-  color: var(--ink-secondary);
-}
-
-.site-footer__links {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   align-items: center;
   gap: var(--sp-4);
+  padding-inline: 16%;
 }
 
-.site-footer__link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.site-footer__icon {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+  align-self: center;
+  flex: none;
+}
+
+.site-footer__icon img {
+  width:150px;
+  height:150px;
+  object-fit: contain;
+  display: block;
+}
+
+.site-footer__contact {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  align-self: center;
+
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.02em;
   color: var(--ink-secondary);
   transition: color var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
 }
 
-.site-footer__link:hover {
+.site-footer__contact:hover {
   color: var(--ink-primary);
 }
 
-.site-footer__note {
-  margin-top: var(--sp-3);
-  font-size: var(--fs-2xs);
-  color: var(--ink-tertiary);
+.site-footer__copyright {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  justify-self: center;
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--ink-secondary);
+  line-height: 1.7;
+}
+
+@media (max-width: 639px) {
+  .site-footer__row {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    gap: var(--sp-3);
+  }
+
+  .site-footer__contact,
+  .site-footer__copyright,
+  .site-footer__icon {
+    justify-self: center;
+  }
 }
 
 /* ============ Scroll-to-top ============ */

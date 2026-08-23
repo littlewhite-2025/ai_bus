@@ -13,7 +13,7 @@ export default function ThemeToggle({ theme, onToggle }) {
       aria-label={isLight ? "切換為深色模式" : "切換為淺色模式"}
       title={isLight ? "切換為深色模式" : "切換為淺色模式"}
     >
-      <MorphIcon icon={isLight ? Sun : Moon} size={18} spring="smooth" />
+      <MorphIcon icon={isLight ? Sun : Moon} size={19} spring="smooth" />
     </button>
   );
 }

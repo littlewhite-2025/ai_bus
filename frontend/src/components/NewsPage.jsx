@@ -4,7 +4,10 @@ export default function NewsPage() {
       <h1 id="news-heading" className="page__title">
         News
       </h1>
-      <p className="page__body">這裡之後會放更新紀錄／公告 — 目前先佔位。</p>
+      <hr className="page__divider" />
+
+      <p className="page__body">[2026.8.19] 網頁開始製作</p>
+      <p className="page__body">[2026.8.23] 網頁大概上完成了</p>
     </section>
   );
 }

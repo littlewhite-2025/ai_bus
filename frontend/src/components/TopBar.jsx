@@ -68,18 +68,18 @@ export default function TopBar({ connectionStatus, theme, onToggleTheme, current
           aria-label="在 GitHub 上查看原始碼"
           title="GitHub"
         >
-          <GithubIcon width={17} height={17} />
+          <GithubIcon width={19} height={19} />
         </a>
 
         <button
           type="button"
-          className="icon-btn"
+          className="icon-btn icon-btn--menu"
           onClick={() => setMenuOpen((v) => !v)}
           aria-expanded={menuOpen}
           aria-controls="nav-menu"
           aria-label={menuOpen ? "關閉選單" : "開啟選單"}
         >
-          <MorphIcon icon={menuOpen ? X : Menu} size={20} spring="smooth" />
+          <MorphIcon icon={menuOpen ? X : Menu} size={22} spring="smooth" />
         </button>
       </div>
 
