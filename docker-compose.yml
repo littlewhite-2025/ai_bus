@@ -1,0 +1,44 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-bus-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # 掛載模型權重
+      - ./runs:/app/runs:ro
+      - ./yolov8s.pt:/app/yolov8s.pt:ro
+      # 掛載訓練好的模型到固定路徑
+      - ./runs/detect/seat_detector-3/weights/best.pt:/app/models/best.pt:ro
+      # 掛載圖片與校準檔
+      - ./assets:/app/assets:ro
+      - ./seat_calibration.json:/app/seat_calibration.json:ro
+    restart: unless-stopped
+
+  # Vite React dev server
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai-bus-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      # Docker 內前端用 proxy 模式，VITE_API_BASE_URL 留空讓 fetch 走相對路徑
+      - VITE_API_BASE_URL=
+      # Vite server proxy 的轉發目標（Docker 內部網路名稱）
+      - VITE_PROXY_BACKEND=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Cloudflare Tunnel
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: ai-bus-tunnel
+    command: tunnel --no-autoupdate --url http://frontend:5173
+    depends_on:
+      - frontend
+    restart: unless-stopped

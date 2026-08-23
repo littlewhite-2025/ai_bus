@@ -13,8 +13,11 @@ calibration_preview.png
 __pycache__/
 
 .env
+.env.docker
 node_modules/
 dist/
 
-*.md
+
 package-lock.json
+
+test2-images.tar
