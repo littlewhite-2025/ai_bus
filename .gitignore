@@ -1,7 +1,10 @@
 runs/
 *.pt
-assets/
-training_files/
+
+assets/training_files/*
+assets/pictures/
+!assets/training_files/*.csv
+!assets/training_files/*.py
 
 .venv/
 .qodo/
