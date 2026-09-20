@@ -7,7 +7,7 @@ export default function SiteFooter() {
     <footer className="site-footer">
       <div className="site-footer__row">
         <a className="site-footer__contact" href={`mailto:${FOOTER.email}`}>
-          CONTACT: {FOOTER.email}
+          CONTACT
         </a>
 
         <p className="site-footer__copyright">
