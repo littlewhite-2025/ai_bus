@@ -190,6 +190,7 @@ class StreamDetector:
         self.count_mode = count_mode
         self.debouncer = SeatDebouncer(window=window, min_votes=min_votes)
         self.fps_meter = FpsMeter()
+        self .last_raw_status: Dict[str, str] = {}
 
     def process_frame(self, frame, draw: bool = True) -> Tuple[dict, Optional[object]]:
         # 處理一幀，回傳 (result, annotated_frame)
@@ -200,6 +201,7 @@ class StreamDetector:
         raw_status = match_persons_to_seats(
             self.seats_config, person_boxes, score_thresh=self.score_thresh
         )
+        self.last_raw_status = raw_status
         stable_status = self.debouncer.update(raw_status)
 
         occupied_count = sum(1 for v in stable_status.values() if v == "occupied")
