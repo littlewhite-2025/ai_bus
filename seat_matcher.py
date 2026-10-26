@@ -1,21 +1,22 @@
 """
-固定座標 + 匈牙利配對版本的座位比對模組
+固定座標 + 匈牙利配對版本的座位比對模組。
 
-改用 scipy.optimize.linear_sum_assignment，一次看過所有 person 對所有座位的完整分數表，做出: 總分數最大化、每個座位最多配一個人、每個人最多配一個座位的組合最高的配對結果
+跟 run_inference.py 原本每個人各自挑分數最高的座位的做法比起來，這改用 scipy.optimize.linear_sum_assignment 做全域最佳配對，
+一次看過所有 person 對所有座位的完整分數表，解出一組總分數最大化、每個座位最多配一個人、每個人最多配一個座位的組合，而不是讓每個人各自獨立去搶分數最高的座位。
 
-模型載入的部分做成單例：同一個 process 裡不管呼叫幾次 SeatDetector(...)，YOLO(model_path) 只會真的被執行一次，之後每次都重用同一份已經載入記憶體的模型，避免在伺服器迴圈或重複呼叫的情境下，每一幀都重新讀一次權重檔
+模型載入的部分做成單例：同一個 process 裡不管呼叫幾次 SeatDetector(...)，YOLO(model_path) 只會真的被執行一次，之後每次都重用同一份已經載入記憶體的模型，避免在伺服器迴圈或重複呼叫的情境下，每一幀都重新讀一次權重檔。
 
-用法範例(當成模組用):
+用法範例（當成模組用）：
     from seat_matcher import SeatDetector, load_seats_config, build_result
 
     detector = SeatDetector(model_path="runs/detect/seat_detector-3/weights/best.pt")
     person_boxes = detector.detect(image_path="assets/pictures/main/main2.png")
 
-    seats_config = load_seats_config("seat_calibration.json")
+    seats_config = load_seats_config("seats_config.json")
     result = build_result(seats_config, person_boxes)
 
-用法範例(當成 CLI 用):
-    python seat_matcher.py --image assets/pictures/main/main2.png --model runs/detect/seat_detector-3/weights/best.pt --seats-config seat_calibration.json
+用法範例（當成 CLI 用，跟 run_inference.py 用法幾乎一樣）：
+    python seat_matcher.py --image assets/pictures/main/main2.png --model runs/detect/seat_detector-3/weights/best.pt --seats-config seats_config.json
 """
 
 from __future__ import annotations
@@ -30,12 +31,15 @@ from scipy.optimize import linear_sum_assignment
 
 BBox = Tuple[float, float, float, float]  # (x1, y1, x2, y2)
 
-DEFAULT_SEATS_CONFIG_PATH = "seat_calibration.json"
+DEFAULT_SEATS_CONFIG_PATH = "seats_config.json"
 
 
-# 跟 calibrate.py / run_inference.py 用同一套邏輯，故意不 import 那兩支檔案，讓 seat_matcher.py 可以獨立被其他程式引用，
+
+# 共用工具：跟 calibrate.py / run_inference.py 用同一套邏輯，
+# 故意不 import 那兩支檔案，讓 seat_matcher.py 可以獨立被其他程式引用，
+# 不用一併拖著校正用的 KMeans、cv2 視窗預覽那些依賴。
 def _compute_iou(box1: BBox, box2: BBox) -> float:
-    # 計算兩個 bbox 的 IoU
+    """計算兩個 bbox 的 IoU（交集面積 / 聯集面積）"""
     x1 = max(box1[0], box2[0])
     y1 = max(box1[1], box2[1])
     x2 = min(box1[2], box2[2])
@@ -63,7 +67,7 @@ def _seat_sort_key(seat_id: str):
 
 
 def load_seats_config(path: str = DEFAULT_SEATS_CONFIG_PATH) -> Dict[str, BBox]:
-    # 讀取固化的 16 席座標檔（seat_calibration.json），把 list 轉回 tuple
+    """讀取固化的 16 席座標檔（seats_config.json），把 list 轉回 tuple。"""
     with open(path, "r", encoding="utf-8") as f:
         raw = json.load(f)
     return {seat_id: tuple(box) for seat_id, box in raw.items()}
@@ -71,13 +75,6 @@ def load_seats_config(path: str = DEFAULT_SEATS_CONFIG_PATH) -> Dict[str, BBox]:
 
 # YOLO 模型單例
 class SeatDetector:
-
-    """
-    YOLO 模型的單例包裝
-
-    整個 process 存活期間，不管呼叫 SeatDetector(...) 幾次，model = YOLO(...)只會真的執行一次；之後每次都重用同一份已經載入記憶體的模型，避免在伺服器迴圈或重複呼叫的情境下，每一幀都重新讀一次權重檔
-    第一次呼叫時傳入的 model_path / person_class_name 會被記住；之後如果用不同參數再呼叫 SeatDetector(...)，不會重新載入，而是沿用第一次的設定（並印出警告），避免不小心用錯模型卻沒發現。如果真的需要換模型，呼叫 SeatDetector.reset() 清掉單例之後再重新建立。
-    """
     _instance: Optional["SeatDetector"] = None
     _lock = threading.Lock()
 
@@ -117,33 +114,39 @@ class SeatDetector:
         self._initialized = True
         print(f"[SeatDetector] 模型已載入（單例，之後不會重複載入）：{model_path}")
 
-    def detect(self, image_path: str, conf: float = 0.4) -> List[BBox]:
-        # 讀一張圖片、跑推論，只取出person這個class的偵測框
+    def detect(self, image_path: str, conf: float = 0.4, imgsz: Optional[int] = None) -> List[BBox]:
         import cv2
 
         image = cv2.imread(image_path)
         if image is None:
             raise FileNotFoundError(f"無法讀取圖片，請確認路徑是否正確：{image_path}")
 
-        return self.detect_frame(image, conf=conf)
+        return self.detect_frame(image, conf=conf, imgsz=imgsz)
 
-    def detect_frame(self, frame, conf: float = 0.4) -> List[BBox]:
-        
-        # 對一個已經讀進記憶體的 frame（例如攝影機讀到的 numpy array）跑推論，跟 detect()共用同一份已經載入的模型，差別只是不用重新從檔案讀圖，給攝影機即時串流的情境用
-        results = self.model.predict(source=frame, conf=conf, verbose=False)
+    def detect_frame(self, frame, conf: float = 0.4, imgsz: Optional[int] = None) -> List[BBox]:
+        return [box for box, _ in self.detect_frame_detailed(frame, conf=conf, imgsz=imgsz)]
 
-        person_boxes: List[BBox] = []
+    def detect_frame_detailed(
+        self, frame, conf: float = 0.4, imgsz: Optional[int] = None
+    ) -> List[Tuple[BBox, float]]:
+        """跟 detect_frame 一樣，但每個框多回傳一個信心值，除錯用。"""
+        kwargs = {"source": frame, "conf": conf, "verbose": False}
+        if imgsz:
+            kwargs["imgsz"] = imgsz
+        results = self.model.predict(**kwargs)
+
+        detections: List[Tuple[BBox, float]] = []
         for r in results:
             for box in r.boxes:
                 if int(box.cls[0]) != self.person_class_id:
                     continue
                 x1, y1, x2, y2 = box.xyxy[0].tolist()
-                person_boxes.append((x1, y1, x2, y2))
-        return person_boxes
+                detections.append(((x1, y1, x2, y2), float(box.conf[0])))
+        return detections
 
     @classmethod
     def reset(cls) -> None:
-        # 清掉單例，讓下一次 SeatDetector(...) 重新載入模型，主要給測試或換模型時用。
+        """清掉單例，讓下一次 SeatDetector(...) 重新載入模型。主要給測試或換模型時用。"""
         with cls._lock:
             cls._instance = None
 
@@ -162,24 +165,17 @@ def _pair_score(seat_box: BBox, person_box: BBox, containment_bonus: float = 0.2
     return iou + (containment_bonus if contains else 0.0)
 
 
-def match_persons_to_seats(
+def _solve_assignment(
     seats_config: Dict[str, BBox],
     person_boxes: List[BBox],
-    score_thresh: float = 0.15,
-    containment_bonus: float = 0.2,
-) -> Dict[str, str]:
-    """
-    用匈牙利演算法做全域最佳配對，取代每個人各自挑分數最高的座位
-
-    建一個 (人數 x 座位數) 的分數矩陣，每一格是 _pair_score()，scipy 的 linear_sum_assignment 預設是"找最小成本"的指派，所以把分數矩陣取負號再丟進去（minimize(-score) 等於 maximize(score)）
-    3. 解出配對結果後，過濾掉分數低於 score_thresh 的配對，分數太低代表沒有真的重疊
-    """
+    score_thresh: float,
+    containment_bonus: float,
+):
     seat_ids = sorted(seats_config.keys(), key=_seat_sort_key)
-
-    if not person_boxes or not seat_ids:
-        return {seat_id: "empty" for seat_id in seat_ids}
-
     score_matrix = np.zeros((len(person_boxes), len(seat_ids)), dtype=np.float64)
+    if not person_boxes or not seat_ids:
+        return seat_ids, score_matrix, []
+
     for i, person_box in enumerate(person_boxes):
         for j, seat_id in enumerate(seat_ids):
             score_matrix[i, j] = _pair_score(
@@ -187,16 +183,65 @@ def match_persons_to_seats(
             )
 
     person_idx, seat_idx = linear_sum_assignment(-score_matrix)
+    pairs = [
+        (int(p), int(s))
+        for p, s in zip(person_idx, seat_idx)
+        if score_matrix[p, s] > score_thresh
+    ]
+    return seat_ids, score_matrix, pairs
 
-    occupied_seat_ids = set()
-    for p_i, s_i in zip(person_idx, seat_idx):
-        if score_matrix[p_i, s_i] > score_thresh:
-            occupied_seat_ids.add(seat_ids[s_i])
 
+def match_persons_to_seats(
+    seats_config: Dict[str, BBox],
+    person_boxes: List[BBox],
+    score_thresh: float = 0.15,
+    containment_bonus: float = 0.2,
+) -> Dict[str, str]:
+    seat_ids, _, pairs = _solve_assignment(
+        seats_config, person_boxes, score_thresh, containment_bonus
+    )
+    occupied_seat_ids = {seat_ids[s_i] for _, s_i in pairs}
     return {
         seat_id: ("occupied" if seat_id in occupied_seat_ids else "empty")
         for seat_id in seat_ids
     }
+
+
+def explain_matching(
+    seats_config: Dict[str, BBox],
+    person_boxes: List[BBox],
+    score_thresh: float = 0.15,
+    containment_bonus: float = 0.2,
+) -> List[dict]:
+    seat_ids, scores, pairs = _solve_assignment(
+        seats_config, person_boxes, score_thresh, containment_bonus
+    )
+    assigned = {p: s for p, s in pairs}
+
+    rows = []
+    for i in range(len(person_boxes)):
+        if len(seat_ids) and scores.shape[1]:
+            best_j = int(np.argmax(scores[i]))
+            best_seat, best_score = seat_ids[best_j], float(scores[i, best_j])
+        else:
+            best_seat, best_score = None, 0.0
+
+        if i in assigned:
+            reason = "ok"
+        elif best_score <= score_thresh:
+            reason = f"跟所有座位框的重疊都太小（最高 {best_score:.2f} <= 門檻 {score_thresh}）：人在所有座位框外面，或座位框沒畫到這個人出現的位置"
+        else:
+            reason = f"最適合的座位 {best_seat}（{best_score:.2f}）被別人配走了，其他座位分數都不到門檻"
+
+        rows.append({
+            "person": i,
+            "assigned": seat_ids[assigned[i]] if i in assigned else None,
+            "score": float(scores[i, assigned[i]]) if i in assigned else 0.0,
+            "best_seat": best_seat,
+            "best_score": best_score,
+            "reason": reason,
+        })
+    return rows
 
 
 def build_result(
@@ -204,7 +249,8 @@ def build_result(
     person_boxes: List[BBox],
     score_thresh: float = 0.15,
 ) -> dict:
-    # 組裝成最終輸出的 JSON 結構
+    """組裝成最終輸出的 JSON 結構，格式跟 run_inference.py 的 build_result() 完全一致，
+    前端（或任何接這個 JSON 的下游）不用因為這次改動而跟著改。"""
     seat_status = match_persons_to_seats(seats_config, person_boxes, score_thresh)
     occupied_count = sum(1 for v in seat_status.values() if v == "occupied")
 
@@ -216,7 +262,7 @@ def build_result(
     }
 
 
-# CLI
+# CLI（跟 run_inference.py 用法幾乎一樣，方便直接拿來對照測試）
 def main():
     import argparse
 

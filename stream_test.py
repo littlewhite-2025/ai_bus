@@ -1,7 +1,7 @@
 """
 stream_test.py
 
-用公車 MP4 影片跑連續推論
+用公車 MP4 影片跑連續推論測試：一邊讀影片、一邊跑偵測 → 匈牙利配對 → 時間防抖，並把每一次推論的結果即時印在終端機，最後印出統計摘要。終端機的連續輸出就是要截圖放雲端的那個畫面。
 
 用法：
     python stream_test.py --video assets/videos/bus.mp4 \\
@@ -12,6 +12,12 @@ stream_test.py
                      refresh_seconds 一致；0 表示每一幀都推論
     --max-frames 120 最多推論幾次（不給就跑完整支影片）
     --delay 0.2      每次推論後多等幾秒，輸出太快來不及截圖時用
+
+結果怪怪的時候（例如畫面明明很滿，卻一直顯示「尚有座位」），先看單一幀是哪裡出問題：
+    python stream_test.py --video bus.mp4 --model <權重> --seats-config seats_config.json --debug-png debug.png --at 5
+    會輸出一張圖（座位框 + 每個被偵測到的人，標出配到哪個座位或「沒配到」），
+    並在終端機印出每個人的信心值、配到的座位、沒配到的原因。
+    遠處的人抓不到的話，加 --imgsz 960 或 --imgsz 1280、調低 --conf（例如 0.25）再比一次 persons 的數字。
 
 換了影片之後，先確認座位座標對不對得上（這兩個模式不需要載入模型，幾秒就好）：
     # 1. 把影片第 0 秒（或 --at 指定的秒數）畫上座位框，存成圖片，肉眼確認
@@ -39,7 +45,13 @@ from typing import Dict, Optional, Tuple
 import cv2
 
 from bus_status import build_bus_status
-from seat_matcher import BBox, DEFAULT_SEATS_CONFIG_PATH, SeatDetector, load_seats_config
+from seat_matcher import (
+    BBox,
+    DEFAULT_SEATS_CONFIG_PATH,
+    SeatDetector,
+    explain_matching,
+    load_seats_config,
+)
 from stream_detector import StreamDetector, _draw_seats
 
 RESET = "\033[0m"
@@ -118,7 +130,57 @@ def _read_frame_at(video: str, at_seconds: float):
     return frame
 
 
-# 連續推論
+# 單幀除錯：誰被偵測到、配到哪個座位、為什麼沒配到
+
+COLOR_MATCHED = (255, 200, 0)    # 配到座位的人：淺藍
+COLOR_UNMATCHED = (255, 0, 255)  # 沒配到座位的人：洋紅，最醒目
+
+
+def debug_frame(detector, seats: Dict[str, BBox], frame, conf: float, score_thresh: float, imgsz: Optional[int] = None):
+    """
+    對單一幀跑一次完整流程（偵測 + 匈牙利配對），回傳 (標註圖, 偵測結果, 配對說明)。
+    這裡看到的配對結果跟實際判斷用的是同一套（seat_matcher._solve_assignment），
+    只是沒有時間防抖，所以一幀就能看出到底問題出在偵測還是出在座位框。
+    """
+    detections = detector.detect_frame_detailed(frame, conf=conf, imgsz=imgsz)
+    rows = explain_matching(seats, [box for box, _ in detections], score_thresh=score_thresh)
+
+    taken = {r["assigned"] for r in rows if r["assigned"]}
+    status = {sid: ("occupied" if sid in taken else "empty") for sid in seats}
+    annotated = frame.copy()
+    _draw_seats(annotated, seats, status)
+
+    scale = max(0.5, frame.shape[1] / 1600)
+    thick = max(2, round(scale * 2))
+    for (box, c), row in zip(detections, rows):
+        x1, y1, x2, y2 = map(int, box)
+        color = COLOR_MATCHED if row["assigned"] else COLOR_UNMATCHED
+        label = f"P{row['person']} {c:.2f} -> {row['assigned']}" if row["assigned"] else f"P{row['person']} {c:.2f} NO SEAT"
+        cv2.rectangle(annotated, (x1, y1), (x2, y2), color, thick)
+        cv2.putText(annotated, label, (x1, max(y1 - 6, 14)), cv2.FONT_HERSHEY_SIMPLEX, scale * 0.7, (0, 0, 0), thick + 2, cv2.LINE_AA)
+        cv2.putText(annotated, label, (x1, max(y1 - 6, 14)), cv2.FONT_HERSHEY_SIMPLEX, scale * 0.7, color, thick, cv2.LINE_AA)
+    return annotated, detections, rows
+
+
+def print_debug_report(detections, rows, total_seats: int, out=print) -> None:
+    matched = sum(1 for r in rows if r["assigned"])
+    out(f"偵測到 {len(detections)} 個人，其中 {matched} 個配到座位、{len(detections) - matched} 個沒配到（座位共 {total_seats} 席）")
+    out("-" * 100)
+    out(f"{'person':<7}{'conf':<6}{'box (x1,y1,x2,y2)':<24}{'seat':<6}{'score':<7}{'best':<6}{'best_score':<11}reason")
+    for (box, c), r in zip(detections, rows):
+        x1, y1, x2, y2 = map(int, box)
+        out(
+            f"P{r['person']:<6}{c:<6.2f}{f'({x1},{y1},{x2},{y2})':<24}"
+            f"{(r['assigned'] or '-'):<6}{r['score']:<7.2f}{(r['best_seat'] or '-'):<6}{r['best_score']:<11.2f}"
+            f"{'' if r['reason'] == 'ok' else r['reason']}"
+        )
+    out("-" * 100)
+    if len(detections) and matched < len(detections):
+        out("有人沒配到：reason 寫「重疊太小」代表這個人不在任何座位框裡（座位框位置/大小要調）；"
+            "寫「被別人配走」代表兩個人搶同一個座位（座位框可能重疊太多或少畫了一個）。")
+    out("畫面上看起來有人、這裡卻沒有 P 編號的地方，就是 YOLO 根本沒偵測到，"
+        "可以試 --imgsz 960 / 1280、調低 --conf，或換成通用模型（例如 yolov8s.pt）比較看看。")
+
 def run_test(
     stream: StreamDetector,
     video: str,
@@ -227,6 +289,7 @@ def main():
     )
     parser.add_argument("--conf", type=float, default=0.4, help="YOLO 偵測信心門檻")
     parser.add_argument("--score-thresh", type=float, default=0.15, help="座位佔用判斷的分數門檻")
+    parser.add_argument("--imgsz", type=int, default=None, help="推論解析度，遠處的人抓不到時調大（例如 960、1280），預設 640")
     parser.add_argument("--person-class-name", default="person", help="模型裡 person 的 class 名稱")
     parser.add_argument("--window", type=int, default=5, help="防抖緩衝幀數，預設 5")
     parser.add_argument("--min-votes", type=int, default=3, help="緩衝內至少幾幀有人才算 occupied，預設 3")
@@ -235,6 +298,7 @@ def main():
     parser.add_argument("--delay", type=float, default=0.0, help="每次推論後多等幾秒")
     parser.add_argument("--no-color", action="store_true", help="輸出不要上色")
     parser.add_argument("--at", type=float, default=0.0, help="--preview / --extract-frame 取影片的第幾秒")
+    parser.add_argument("--debug-png", metavar="PNG", default=None, help="單幀除錯：偵測 + 配對，輸出標註圖並印出每個人配到哪個座位（需要 --model，搭配 --at）")
     parser.add_argument("--preview", metavar="PNG", default=None, help="把座位框畫在影片的一幀上存檔後離開（不載入模型）")
     parser.add_argument("--extract-frame", metavar="PNG", default=None, help="把影片的一幀原樣存檔後離開，拿去重新校正座位")
     args = parser.parse_args()
@@ -269,13 +333,24 @@ def main():
         return
 
     if not args.model:
-        raise SystemExit("連續推論需要 --model 指定 YOLO 權重路徑。")
+        raise SystemExit("連續推論 / --debug-png 需要 --model 指定 YOLO 權重路徑。")
 
     detector = SeatDetector(model_path=args.model, person_class_name=args.person_class_name)
+
+    if args.debug_png:
+        frame = _read_frame_at(args.video, args.at)
+        annotated, detections, rows = debug_frame(
+            detector, seats, frame, args.conf, args.score_thresh, args.imgsz
+        )
+        cv2.imwrite(args.debug_png, annotated)
+        print(f"已存檔：{args.debug_png}（影片 {args.at} 秒；洋紅色框 = 偵測到但沒配到座位的人）")
+        print_debug_report(detections, rows, len(seats))
+        return
+
     stream = StreamDetector(
         detector, seats,
         conf=args.conf, score_thresh=args.score_thresh,
-        window=args.window, min_votes=args.min_votes,
+        window=args.window, min_votes=args.min_votes, imgsz=args.imgsz,
     )
     run_test(
         stream, args.video,

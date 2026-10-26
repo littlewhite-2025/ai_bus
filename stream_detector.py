@@ -2,20 +2,38 @@
 即時串流版的座位偵測：在 seat_matcher.py（固定座標 + 匈牙利配對）的基礎上，
 加上「時間滑動防抖」跟「畫面左上角 OSD」。
 
+為什麼需要防抖：
+    YOLO 是一幀一幀獨立判斷的，人只要稍微晃動、被前排椅背遮到一下，單幀的
+    偵測框就可能掉一幀，座位狀態會在 occupied / empty 之間來回跳，畫面上的
+    座位框就變成紅綠燈一直閃。這裡替每個座位各自準備一條 deque(maxlen=5)，
+    記錄最近 5 幀「這個座位有沒有人」，5 幀中至少 3 幀有人才判定為 occupied。
+    這是對稱的多數決：從有人變成沒人，也要連續累積到「最近 5 幀裡有人的
+    不到 3 幀」才會翻回 empty，所以單幀的誤判、漏判都不會讓狀態翻轉。
+
+    代價是反應會慢幾幀：真的有人坐下，要等到第 3 個有人的畫面才會亮紅燈。
+    以 10 FPS 來說大約 0.3 秒，對公車座位這種場景完全可以接受。
 
 OSD（左上角）：
     Seats: X/16   X 預設是「已佔用座位數」，加 --osd-count empty 可以改成顯示空位數
-    Crowd: ...    擁擠度（Empty / Normal / Crowded），門檻跟前端網頁一致：佔用率 < 40% 空曠、< 75% 普通、其餘擁擠
+    Crowd: ...    擁擠度（Empty / Normal / Crowded），門檻跟前端網頁一致：
+                  佔用率 < 40% 空曠、< 75% 普通、其餘擁擠
     FPS: ...      即時 FPS（含推論時間，用指數移動平均讓數字不要跳太快）
-    OSD 用英文標籤，因為 OpenCV 內建字型畫不出中文
+    OSD 用英文標籤，因為 OpenCV 內建字型畫不出中文。
 
-用法：
-    python stream_detector.py --model runs/detect/seat_detector-3/weights/best.pt --seats-config seat_calibration.json --camera 0
+用法（當成 CLI）：
+    python stream_detector.py --model runs/detect/seat_detector-3/weights/best.pt \\
+        --seats-config seats_config.json --camera 0
 
-    # 也可以用錄好的影片：
-    python stream_detector.py --model runs/detect/seat_detector-3/weights/best.pt --seats-config seat_calibration.json --video assets/videos/test.mp4
+    # 也可以吃錄好的影片，方便重複測試防抖效果：
+    python stream_detector.py --model runs/detect/seat_detector-3/weights/best.pt \\
+        --seats-config seats_config.json --video assets/videos/test.mp4
 
-    視窗中按 q 離開。沒有螢幕的環境（SSH 等）加 --no-display
+    視窗中按 q 離開。沒有螢幕的環境（SSH 等）加 --no-display。
+
+用法（當成模組，例如給 server.py 用）：
+    stream = StreamDetector(SeatDetector(model_path=...), load_seats_config("seats_config.json"))
+    result, annotated = stream.process_frame(frame)
+    # result 的格式跟 seat_matcher.build_result() 完全一樣，只是座位狀態是防抖後的
 """
 
 from __future__ import annotations
@@ -44,9 +62,17 @@ COLOR_WARN = (0, 200, 255)      # 黃
 COLOR_TEXT = (255, 255, 255)
 
 
-
 # 時間滑動防抖
 class SeatDebouncer:
+    """
+    每個座位一條 deque(maxlen=window)，存最近 window 幀「這個座位有沒有人」。
+    最近 window 幀中至少 min_votes 幀有人，才判定為 occupied。
+
+    預設 window=5、min_votes=3，也就是「5 幀中滿 3 幀」。
+    剛開始畫面還不足 5 幀的時候，同樣要求至少 3 幀有人，所以開機後最前面
+    幾幀座位一律先當 empty，等累積到足夠的票才會亮起來。
+    """
+
     def __init__(self, window: int = 5, min_votes: int = 3):
         if window < 1:
             raise ValueError("window 必須 >= 1")
@@ -57,7 +83,7 @@ class SeatDebouncer:
         self._history: Dict[str, Deque[bool]] = {}
 
     def update(self, raw_status: Dict[str, str]) -> Dict[str, str]:
-        # 吃進這一幀的原始座位狀態，回傳防抖後的座位狀態（key 的順序不變）
+        #  吃進這一幀的原始座位狀態，回傳防抖後的座位狀態（key 的順序不變）。
         stable: Dict[str, str] = {}
         for seat_id, state in raw_status.items():
             buf = self._history.setdefault(seat_id, deque(maxlen=self.window))
@@ -66,14 +92,14 @@ class SeatDebouncer:
         return stable
 
     def reset(self) -> None:
-        # 清掉所有歷史，例如換影片來源、攝影機重新連線之後用
+        # 清掉所有歷史，例如換影片來源、攝影機重新連線之後用。
         self._history.clear()
 
 
 
 # OSD 用的小工具
 def crowd_level(occupied: int, total: int) -> Tuple[str, Tuple[int, int, int]]:
-    # 擁擠度，門檻跟前端 utils/format.js 的 crowdLevel() 一致
+    """擁擠度，門檻跟前端 utils/format.js 的 crowdLevel() 一致。"""
     if not total:
         return "N/A", COLOR_TEXT
     ratio = occupied / total
@@ -85,7 +111,7 @@ def crowd_level(occupied: int, total: int) -> Tuple[str, Tuple[int, int, int]]:
 
 
 class FpsMeter:
-    # 即時 FPS
+    # 即時 FPS：每次呼叫 tick() 算一次「距離上一幀過了多久」，再用指數移動平均（EMA）平滑，不然每幀的推論時間有高有低，數字會跳得很難讀。
     def __init__(self, smoothing: float = 0.1):
         self.smoothing = smoothing
         self._last: Optional[float] = None
@@ -111,7 +137,7 @@ def _draw_osd(
     fps: float,
     count_mode: str = "occupied",
 ) -> None:
-    # 在畫面左上角畫 OSD（直接改 frame），字大小會跟著畫面寬度縮放
+    # 在畫面左上角畫 OSD（直接改 frame）。字大小會跟著畫面寬度縮放。
     shown = occupied if count_mode == "occupied" else total - occupied
     level, level_color = crowd_level(occupied, total)
 
@@ -148,7 +174,7 @@ def _draw_seats(
     status: Dict[str, str],
     person_boxes: Optional[List[BBox]] = None,
 ) -> None:
-    # 用防抖後的狀態把座位框塗色：綠 = 空位、紅 = 有人
+    """用防抖後的狀態把座位框塗色：綠 = 空位、紅 = 有人。"""
     overlay = frame.copy()
     for seat_id, box in seats_config.items():
         x1, y1, x2, y2 = map(int, box)
@@ -171,6 +197,13 @@ def _draw_seats(
 
 
 class StreamDetector:
+    """
+    把「偵測 → 匈牙利配對 → 時間防抖 → OSD」串成一個 process_frame()。
+
+    detector 只要有 detect_frame(frame, conf) 就能用（SeatDetector 單例當然可以），
+    方便之後做測試時換成假的偵測器。
+    """
+
     def __init__(
         self,
         detector,
@@ -180,6 +213,7 @@ class StreamDetector:
         window: int = 5,
         min_votes: int = 3,
         count_mode: str = "occupied",
+        imgsz: Optional[int] = None,
     ):
         if count_mode not in ("occupied", "empty"):
             raise ValueError("count_mode 只能是 'occupied' 或 'empty'")
@@ -188,16 +222,26 @@ class StreamDetector:
         self.conf = conf
         self.score_thresh = score_thresh
         self.count_mode = count_mode
+        self.imgsz = imgsz
         self.debouncer = SeatDebouncer(window=window, min_votes=min_votes)
         self.fps_meter = FpsMeter()
-        self .last_raw_status: Dict[str, str] = {}
+        # 最近一幀「防抖前」的原始座位狀態，給需要對照防抖效果的工具用（例如 stream_test.py）
+        self.last_raw_status: Dict[str, str] = {}
 
     def process_frame(self, frame, draw: bool = True) -> Tuple[dict, Optional[object]]:
-        # 處理一幀，回傳 (result, annotated_frame)
-        
+        """
+        處理一幀，回傳 (result, annotated_frame)。
+        result 格式跟 seat_matcher.build_result() 一樣，但座位狀態是防抖後的；
+        person_count 是這一幀實際偵測到的人數（不防抖）。
+        draw=False 的話不畫圖，annotated_frame 回傳 None（給純後端用）。
+        """
         fps = self.fps_meter.tick()
 
-        person_boxes = self.detector.detect_frame(frame, conf=self.conf)
+        # imgsz 只有有設定才傳，這樣只實作 detect_frame(frame, conf) 的簡單偵測器也能用
+        kwargs = {"conf": self.conf}
+        if self.imgsz:
+            kwargs["imgsz"] = self.imgsz
+        person_boxes = self.detector.detect_frame(frame, **kwargs)
         raw_status = match_persons_to_seats(
             self.seats_config, person_boxes, score_thresh=self.score_thresh
         )
@@ -229,8 +273,10 @@ def run_stream(
     window_name: str = "Seat Detection - Live",
     max_frames: Optional[int] = None,
 ) -> Optional[dict]:
-    
-    # 開啟來源（攝影機編號 int 或影片路徑 str）、逐幀處理，回傳最後一幀的 result。display=True 時顯示視窗，按 q 離開；影片播完或讀不到畫面也會結束。
+    """
+    開啟來源（攝影機編號 int 或影片路徑 str）、逐幀處理，回傳最後一幀的 result。
+    display=True 時顯示視窗，按 q 離開；影片播完或讀不到畫面也會結束。
+    """
     cap = cv2.VideoCapture(source)
     if not cap.isOpened():
         raise RuntimeError(
@@ -277,6 +323,7 @@ def main():
 
     parser.add_argument("--conf", type=float, default=0.4, help="YOLO 偵測信心門檻")
     parser.add_argument("--score-thresh", type=float, default=0.15, help="座位佔用判斷的分數門檻")
+    parser.add_argument("--imgsz", type=int, default=None, help="推論解析度，遠處的人抓不到時調大（例如 960、1280），預設 640")
     parser.add_argument("--person-class-name", default="person", help="模型裡 person 的 class 名稱")
     parser.add_argument("--window", type=int, default=5, help="防抖緩衝幀數，預設 5")
     parser.add_argument("--min-votes", type=int, default=3, help="緩衝內至少幾幀有人才算 occupied，預設 3")
@@ -299,6 +346,7 @@ def main():
         window=args.window,
         min_votes=args.min_votes,
         count_mode=args.osd_count,
+        imgsz=args.imgsz,
     )
 
     source = args.video if args.video is not None else (args.camera if args.camera is not None else 0)

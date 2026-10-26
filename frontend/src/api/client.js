@@ -1,6 +1,8 @@
 // Vite only exposes env vars explicitly prefixed with VITE_ to client code,
 // so nothing sensitive can leak here by accident.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? "http://127.0.0.1:8000" : "");
+console.info("[api] 後端網址：", API_BASE_URL || "(未設定)");
 const REQUEST_TIMEOUT_MS = 8000;
 
 export class ApiError extends Error {
