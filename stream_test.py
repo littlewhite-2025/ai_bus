@@ -4,9 +4,7 @@ stream_test.py
 用公車 MP4 影片跑連續推論測試：一邊讀影片、一邊跑偵測 → 匈牙利配對 → 時間防抖，並把每一次推論的結果即時印在終端機，最後印出統計摘要。終端機的連續輸出就是要截圖放雲端的那個畫面。
 
 用法：
-    python stream_test.py --video assets/videos/bus.mp4 \\
-        --model runs/detect/seat_detector-3/weights/best.pt \\
-        --seats-config seats_config.json
+    python stream_test.py --video assets/videos/bus.mp4 --model runs/detect/seat_detector-3/weights/best.pt --seats-config seats_config.json
 
     --interval 0.5   每隔幾秒（影片時間）推論一次，預設 0.5，跟 main.py 的
                      refresh_seconds 一致；0 表示每一幀都推論

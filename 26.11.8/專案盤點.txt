@@ -1,0 +1,57 @@
+﻿這次是把資料做一次盤點，
+---
+
+整體流程:
+公車影片(MP4)或攝影機 → OpenCV 讀取畫面 → YOLO 偵測person(seat_matcher.py  SeatDetector) → 人框與座位框的配對(匈牙利演算法) (seat_matcher.py +seats_config.json) → 時間防抖: 最近5次推論中滿3次才算有人(stream_detector.py) → 剩餘座位數, 狀態文字(尚有座位/座位有限/已滿座) (bus_status.py) → FastAPI  /api/bus-status、/api/bus  (main.py) → 前端每4秒跑一次 → React 網頁(車輛卡片, 座位圖, 連線狀態)
+
+檔案清單:
+
+使用中:
+  main.py                        FastAPI 服務
+  seat_matcher.py         SeatDetector、座位框與人框的匈牙利配對
+  stream_detector.py    StreamDetector，偵測, 配對, 防抖, 畫面上的 OSD；也能獨立開視窗看即時結果
+  bus_status.py              把推論結果轉成 API 格式、判斷狀態文字。不依賴任何大型套件。 [實測：透過 main.py；替身：門檻]
+  seats_config.json        固化的座位座標檔
+
+工具:
+  draw_seats.py       手動畫座位框
+  stream_test.py       對MP4連續推論
+
+舊版與備用:
+  run_inference.py             最早的單張圖片推論 CLI，配對方式是每個人各自挑最高分
+  calibrate.py                      自動座位校正(KMeans 分左右、分排)，在遊覽車這種畫面效果差，目前以手畫為主
+  run_calibration.py           自動校正，輸出 seat_calibration.json
+  run_camera_detect.py    開攝影機畫出person, seat 偵測框，用來確認攝影機編號與模型能不能偵測
+  server.py                          舊的 FastAPI 入口
+  seat_calibration.json      自動校正的輸出(舊的16席)
+
+模型與資料:
+  yolov8s.pt                                                                Ultralytics 通用預訓練模型
+  runs/detect/seat_detector-3/weights/best.pt    目前使用的自訂模型，類別 {0: Seat, 1: person}
+  runs/detect/seat_detector-2、train                     較早的訓練結果
+  runs/detect/predict、predict2                             測試推論的輸出圖片
+  seat_dataset/                                                          訓練資料集
+  another_test/                                                          測試圖
+  assets/                                                                     一些圖片與影片
+
+前端(React+Vite):
+  src/App.jsx、components/    (TopBar, NavMenu,ThemeToggle, HomePage, BusCard, StatRow, SeatPanel, ToggleButton, ConsoleStrip, SiteFooter, ScrollTopButton, AboutPage, NewsPage)
+  src/hooks/useSeatStatus.js   每4秒收到一次 GET /api/bus，決定連線狀態(idle, connected, error)
+  src/api/client.js、busApi.js    打後端，網址來自 .env 的 VITE_API_BASE_URL(預設http://127.0.0.1:8000)
+  src/constants/defaults.js       目前寫死的單一車輛資訊(BUS_META) 與初始座位狀態
+
+26.11.8(這次新增):
+  db.py                       SQLite 資料層(建表, 車輛登記, 狀態寫入, 查詢)
+  schema.sql             資料庫結構定義
+  seed_demo.py       建庫並寫入路線 E01/E02/E25 與車輛，其中除了接影片的那台，目前其餘都是示範用假資料
+  test_db.py               db.py 的自動測試
+
+FastAPI 盤點:
+端點 GET / 服務說明
+         GET /healthz               確認服務有在回應
+         GET /api/bus-status   總座位數、已佔用數、剩餘數、狀態文字、各座位狀態
+         GET /api/bus               舊格式四個欄位
+         GET /docs                    FastAPI自動產生的互動式文件
+超過 15 秒沒有新結果回傳 503；啟動時如果埠已被佔用會直接停止並提示；用lifespan啟動背景執行緒
+一個程序只處理一個畫面來源
+CORS 目前是 allow_origins=["*"]，對外之前可能要改成白名單比較好，目前沒有任何寫入型的端點或驗證機制
