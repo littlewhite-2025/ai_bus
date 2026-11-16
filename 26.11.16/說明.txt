@@ -1,0 +1,60 @@
+﻿這次新增了:
+    db.py          多台公車、多條路線、座位狀態的 SQLite 資料層。結構定義在上次傳的schema.sql
+    seed_demo.py      建立資料庫、寫入路線與車輛，方便前端 / API 在只有一支真實影片的情況下，也能開發多台車、多條路線的畫面
+    test_db.py             db.py, schema.sql 的自動測試
+
+完成內容:
+FastAPI 後端初版，提供：公車清單、路線清單、各公車的剩餘座位數、各座位的狀態字典、最後更新時間。資料存在 SQLite（bus_status.db）。AI 推論（YOLO + 座位配對 + 防抖）每次算完就把結果寫進資料庫，API 從資料庫讀。
+
+啟動方式:
+python main.py --model runs/detect/seat_detector-3/weights/best.pt --seats-config seats_config.json --video assets/videos/bus.mp4 --plate AAA-1234 --route E01 --demo-buses
+
+啟動後瀏覽器開 http://127.0.0.1:8000/docs ，FastAPI 會自動產生互動式文件，可以直接點選測試每一個 API。
+  --video 可以換成 --camera 0（即時攝影機）。--demo-buses 是產生其他路線的示範車（見下面「資料說明」）。
+
+API一覽:
+  GET /api/routes                                        路線清單（E01、E02、E25），含各路線的公車數
+  GET /api/routes/{route_id}/buses          某條路線上的公車與目前座位狀態（路線不存在回 404）
+  GET /api/buses                                         公車清單與目前座位狀態（可加 ?route_id=E01 篩選）
+  GET /api/buses/{bus_id}                         單一公車的完整狀態（公車不存在回 404）
+  GET /api/buses/{bus_id}/history           最近一段時間的佔用數紀錄（?minutes=60，上限 1440）
+  GET /api/bus-status                                舊的單車版本（總座位數、已佔用數、剩餘數、狀態文字、座位狀態字典）
+  GET /api/bus                                           舊的單車版本，四個欄位（目前的網頁在用）
+  GET /healthz                                            確認服務有在回應
+
+回傳範例：GET /api/buses/1
+  {
+    "bus_id": 1,
+    "plate": "AAA-1234",
+    "route_id": "E01",
+    "route_name": "",
+    "source": "video",
+    "is_active": true,
+    "total_seats": 16,
+    "occupied_count": 5,
+    "remaining_seats": 11,
+    "status_text": "尚有座位",
+    "person_count": 5,
+    "occupied_seats": {"A01": "empty", "A02": "occupied", "A03": "occupied", "...": "..."},
+    "updated_at": "2026-11-15T09:06:16Z",
+    "updated_at_tw": "2026-11-15 17:06:16",
+    "has_data": true,
+    "is_stale": false
+  }
+  /api/buses 與 /api/routes/{route_id}/buses 回傳的是由這種物件組成的陣列。
+
+欄位說明:
+  total_seats / occupied_count / remaining_seats   總座位數 / 已佔用數 / 剩餘數（剩餘數 = 總座位數 - 已佔用數，由資料庫的 view 算出）
+  status_text       尚有座位 / 座位有限 / 已滿座。剩餘 0 席 = 已滿座；佔用率 75% 以上 = 座位有限；其餘 = 尚有座位
+  occupied_seats    座位狀態字典，每個座位 empty（空）或 occupied（有人）
+  updated_at        最後更新時間（UTC）。updated_at_tw 是同一個時間的台灣時間（UTC+8）
+  is_stale          超過 15 秒沒有更新時為 true。資料過期的公車仍然回 200，只用這個欄位標記，不會讓整個清單失敗
+  has_data          false 代表這台車登記了，但還沒收到過任何資料（例如模型還在載入）
+  source            video / camera = 真實推論；simulated = 示範假資料
+
+資料說明:
+  1. 只有 E01（AAA-1234）是真實推論，來源是公車錄影檔。"E02"、"E25" 沒有真實資料，用 --demo-buses 產生的是示範資料
+（車牌 DEMO-E02-1、DEMO-E25-1，佔用數隨機變動），資料庫與 API 都標記 source = simulated。
+  2. 目前每條路線一台車。E01 的車牌與路線是暫定值（AAA-1234 / E01）。
+  3. 座位狀態字典的筆數等於座位座標檔(seats_config.json)的座位數；示範車是 16 席。
+  4. 資料庫檔案 bus_status.db 建在執行 main.py 的資料夾。建議在 .gitignore 加入 *.db、*.db-wal、*.db-shm。

@@ -24,3 +24,7 @@ dist/
 package-lock.json
 
 test2-images.tar
+
+*.db
+*.db-wal
+*.db-shm
