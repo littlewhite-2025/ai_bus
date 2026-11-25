@@ -1,0 +1,33 @@
+﻿完成AI辨識結果（MP4連續推論）與FastAPI後端整合測試；確認座況JSON即時傳送至後端並寫入SQLite資料庫
+---
+
+這次新增了 integration_test.py這個檔案，
+
+使用方式:
+  python integration_test.py --video assets/videos/bus.mp4 --model runs/detect/seat_detector-3/weights/best.pt --seats-config seats_config.json
+
+程式會自動啟動後端(main.py)，等模型載入並算出第一筆結果，再連續取樣30秒，最後逐項檢查
+預設用獨立的埠(8765) 和獨立的資料庫(integration_test.db，每次都會重新建立)
+
+輸出:
+  1. 終端機: 每秒一行座況(時間、已佔用/總數、剩餘數、各座位狀態、資料更新時間、狀態文字等)，
+     最後是逐項 PASS / FAIL 與總結。
+  2. integration_report.txt: 完整過程、最後一筆API回傳的JSON、資料庫bus_status 與歷史紀錄、後端輸出節錄。
+
+檢查項目(共16項):
+  後端啟動並回應 /healthz
+  第一筆AI 推論結果出現 (模型載入+第一次推論花了幾秒)
+  路線清單 /api/routes 含 E01、E02、E25
+  公車清單 /api/buses 含目標公車 (車牌、路線、來源)
+  連續取樣成功 (API每次都有回應)
+  座況JSON格式與內部一致性: 欄位與型態、座位字典筆數=總座位數、字典裡有人的座位數=已佔用數、剩餘數=總座位數-已佔用數、狀態文字與門檻規則一致
+  連續推論: updated_at不斷往前，而且取樣結束時最新一筆仍然很新 (中途停掉會被抓到)
+  即時性：資料新鮮度中位數不超過 5 秒
+  資料沒有過期(is_stale為false的比例 >=90%)
+  座況JSON寫入SQLite:後端 /api/bus 的 JSON(AI 剛算出來的) 等於資料庫 bus_status 那一列
+  歷史紀錄bus_status_log有寫入，且涵蓋取樣期間看到的所有佔用數
+  舊端點相容 (/api/bus、/api/bus-status)
+  示範車(E02、E25) 標示為simulated且持續更新
+  API 回應時間 (單次最大不超過 2 秒)
+  後端有讀取 MP4 影片 (看後端的輸出)
+  後端執行期間沒有例外、推論錯誤、寫入資料庫失敗
